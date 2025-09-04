@@ -1,0 +1,112 @@
+.protectionWidget {
+  max-width: 952px !important;
+  margin: 0 auto !important;
+  padding: 20px;
+}
+
+.polarisLink {
+  appearance: none;
+  display: inline;
+  text-align: inherit;
+  padding: 0;
+  background: none;
+  border: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  color: #cc62c7;
+  text-decoration: underline;
+  cursor: pointer;
+  touch-action: manipulation;
+  text-decoration: none;
+}
+
+.widgetIcons {
+  display: flex;
+  gap: 13px;
+  margin-top: 8px;
+  align-items: center;
+}
+.widgetIconsItems {
+  height: 75px;
+  width: 75px;
+  border-radius: 11.25px;
+  border: 1.5px dashed #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.widgetIconsItems p {
+  color: #cc62c7;
+  font-family: Inter;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+  margin-top: 5px;
+}
+
+
+.widgetIconsItems div {
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ justify-content: center;
+}
+
+.selectedIcon {
+  border: 1.5px solid #CC62C7 !important;
+ 
+}
+
+.disabledIcon {
+  opacity: 0.5;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Custom switch styles */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #8A8A8A;
+  transition: 0.4s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+.switch input:checked + .slider {
+  background-color: #cc62c7;
+}
+
+.switch input:checked + .slider:before {
+  transform: translateX(20px);
+}
