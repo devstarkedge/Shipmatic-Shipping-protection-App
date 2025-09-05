@@ -21,6 +21,99 @@ import RangeSliderReusable from "../components/RangeSliderReusable";
 import ColorPickerWithHexInput from "../components/ColorPickerWithHexInput";
 
 export default function AdditionalPage() {
+  const initialState = {
+    selectedPricingOptions: ["percentage"],
+    isWidgetPublished: false,
+    selectedWidgetOptions: ["standard"],
+    selectedVisiblityOptions: ["show"],
+    selectedButtonOptions: ["show"],
+    pricingValue: "0.5",
+    selectedIconIndex: 0,
+    iconSize: 40,
+    iconCornerRadius: 0,
+    widgetBorderSize: 0,
+    widgetCornerRadius: 0,
+    widgetVerticalPadding: 0,
+    widgetHorizontalPadding: 0,
+    colorStates: {
+      titleColor: "#000000",
+      backgroundColor: "#ffffff",
+      enableDescColor: "#282828",
+      disabledDescColor: "#282828",
+      optInActionColor: "#cc62c7",
+      optOutActionColor: "#e7e7e7",
+      borderColor: "#e7e7e7",
+      Labeltitle: "#000000",
+      description: "#282828",
+      protectedWidgetText: "#000000",
+      checkoutButtonText: "#ffffff",
+      protectedWidgetBackground: "#ffffff",
+    },
+    addonTitle: "Shipping protection",
+    enabledDescription:
+      "100% guarantee & protect your order from damage, loss, or theft.",
+    disabledDescription:
+      "By deselecting shipping protection, we are not liable for lost, damaged, or stolen products.",
+    showAdvancedSettings: false,
+    minimumCharge: "1",
+    incrementAmount: "1.01",
+  };
+
+  const [selectedPricingOptions, setSelectedPricingOptions] = useState(
+    initialState.selectedPricingOptions,
+  );
+  const [isWidgetPublished, setIsWidgetPublished] = useState(
+    initialState.isWidgetPublished,
+  );
+  const [selectedWidgetOptions, setSelectedWidgetOptions] = useState(
+    initialState.selectedWidgetOptions,
+  );
+  const [selectedVisiblityOptions, setSelectedVisiblityOptions] = useState(
+    initialState.selectedVisiblityOptions,
+  );
+  const [selectedButtonOptions, setSelectedButtonOptions] = useState(
+    initialState.selectedButtonOptions,
+  );
+  const [pricingValue, setPricingValue] = useState(initialState.pricingValue);
+  const [selectedIconIndex, setSelectedIconIndex] = useState(
+    initialState.selectedIconIndex,
+  );
+  const [iconSize, setIconSize] = useState(initialState.iconSize);
+  const [iconCornerRadius, setIconCornerRadius] = useState(
+    initialState.iconCornerRadius,
+  );
+  const [widgetBorderSize, setWidgetBorderSize] = useState(
+    initialState.widgetBorderSize,
+  );
+  const [widgetCornerRadius, setWidgetCornerRadius] = useState(
+    initialState.widgetCornerRadius,
+  );
+  const [widgetVerticalPadding, setWidgetVerticalPadding] = useState(
+    initialState.widgetVerticalPadding,
+  );
+  const [widgetHorizontalPadding, setWidgetHorizontalPadding] = useState(
+    initialState.widgetHorizontalPadding,
+  );
+  const [colorStates, setColorStates] = useState(initialState.colorStates);
+  const [addonTitle, setAddonTitle] = useState(initialState.addonTitle);
+  const [enabledDescription, setEnabledDescription] = useState(
+    initialState.enabledDescription,
+  );
+  const [disabledDescription, setDisabledDescription] = useState(
+    initialState.disabledDescription,
+  );
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(
+    initialState.showAdvancedSettings,
+  );
+  const [minimumCharge, setMinimumCharge] = useState(
+    initialState.minimumCharge,
+  );
+  const [incrementAmount, setIncrementAmount] = useState(
+    initialState.incrementAmount,
+  );
+
+  const [hasChanges, setHasChanges] = useState(false);
+
   const pricingOptions = useMemo(
     () => [
       { value: "percentage", label: "Percentage" },
@@ -28,17 +121,6 @@ export default function AdditionalPage() {
     ],
     [],
   );
-
-  const [selectedPricingOptions, setSelectedPricingOptions] = useState([
-    "percentage",
-  ]);
-
-  // Add missing state and handler for switch toggle
-  const [isWidgetPublished, setIsWidgetPublished] = useState(false);
-
-  const handleToggleChange = () => {
-    setIsWidgetPublished((prev) => !prev);
-  };
 
   const widgetOptions = useMemo(
     () => [
@@ -48,10 +130,6 @@ export default function AdditionalPage() {
     [],
   );
 
-  const [selectedWidgetOptions, setSelectedWidgetOptions] = useState([
-    "standard",
-  ]);
-
   const VisiblityOptions = useMemo(
     () => [
       { value: "show", label: "Show Icon" },
@@ -59,10 +137,6 @@ export default function AdditionalPage() {
     ],
     [],
   );
-
-  const [selectedVisiblityOptions, setSelectedVisiblityOptions] = useState([
-    "show",
-  ]);
 
   const ButtonOptions = useMemo(
     () => [
@@ -72,9 +146,12 @@ export default function AdditionalPage() {
     [],
   );
 
-  const [selectedButtonOptions, setSelectedButtonOptions] = useState(["show"]);
-
-  const [pricingValue, setPricingValue] = useState("");
+  const widgetIcons = [
+    "https://2766624.fs1.hubspotusercontent-na1.net/hubfs/2766624/Shipmatic/icon1.png",
+    "https://2766624.fs1.hubspotusercontent-na1.net/hubfs/2766624/Shipmatic/icon2.png",
+    "https://2766624.fs1.hubspotusercontent-na1.net/hubfs/2766624/Shipmatic/icon3.png",
+    "https://2766624.fs1.hubspotusercontent-na1.net/hubfs/2766624/Shipmatic/icon4.png",
+  ];
 
   useEffect(() => {
     if (selectedPricingOptions.includes("percentage")) {
@@ -84,79 +161,184 @@ export default function AdditionalPage() {
     }
   }, [selectedPricingOptions]);
 
-  console.log(selectedPricingOptions);
-  console.log(pricingValue);
+  // Handlers with change tracking and console logging
+  const handleSelectedPricingOptionsChange = (value) => {
+    setSelectedPricingOptions(value);
+    setHasChanges(true);
+    console.log("selectedPricingOptions:", value);
+  };
 
-  // New state for selected widget icon index
-  const [selectedIconIndex, setSelectedIconIndex] = useState(0);
+  const handleToggleChange = () => {
+    setIsWidgetPublished((prev) => {
+      const newValue = !prev;
+      setHasChanges(true);
+      console.log("isWidgetPublished:", newValue);
+      return newValue;
+    });
+  };
 
-  const widgetIcons = [
-    "https://2766624.fs1.hubspotusercontent-na1.net/hubfs/2766624/Shipmatic/icon1.png",
-    "https://2766624.fs1.hubspotusercontent-na1.net/hubfs/2766624/Shipmatic/icon2.png",
-    "https://2766624.fs1.hubspotusercontent-na1.net/hubfs/2766624/Shipmatic/icon3.png",
-    "https://2766624.fs1.hubspotusercontent-na1.net/hubfs/2766624/Shipmatic/icon4.png",
-  ];
+  const handleSelectedWidgetOptionsChange = (value) => {
+    setSelectedWidgetOptions(value);
+    setHasChanges(true);
+    console.log("selectedWidgetOptions:", value);
+  };
 
-  // Separate state for each slider
-  const [iconSize, setIconSize] = useState(40);
-  const [iconCornerRadius, setIconCornerRadius] = useState(0);
-  const [widgetBorderSize, setWidgetBorderSize] = useState(0);
-  const [widgetCornerRadius, setWidgetCornerRadius] = useState(0);
-  const [widgetVerticalPadding, setWidgetVerticalPadding] = useState(0);
-  const [widgetHorizontalPadding, setWidgetHorizontalPadding] = useState(0);
+  const handleSelectedVisiblityOptionsChange = (value) => {
+    setSelectedVisiblityOptions(value);
+    setHasChanges(true);
+    console.log("selectedVisiblityOptions:", value);
+  };
 
-  const [colorStates, setColorStates] = useState({
-    titleColor: "#000000",
-    backgroundColor: "#ffffff",
-    enableDescColor: "#282828",
-    disabledDescColor: "#282828",
-    optInActionColor: "#cc62c7",
-    optOutActionColor: "#e7e7e7",
-    borderColor: "#e7e7e7",
-    Labeltitle: "#000000",
-    description: "#282828",
-    protectedWidgetText: "#000000",
-    checkoutButtonText: "#ffffff",
-    protectedWidgetBackground: "#ffffff",
-  });
+  const handleSelectedButtonOptionsChange = (value) => {
+    setSelectedButtonOptions(value);
+    setHasChanges(true);
+    console.log("selectedButtonOptions:", value);
+  };
 
-  console.log(colorStates);
+  const handlePricingValueChange = (value) => {
+    setPricingValue(value);
+    setHasChanges(true);
+    console.log("pricingValue:", value);
+  };
 
-  const [addonTitle, setAddonTitle] = useState("Shipping protection");
-  const [enabledDescription, setEnabledDescription] = useState(
-    "100% guarantee & protect your order from damage, loss, or theft.",
-  );
-  const [disabledDescription, setDisabledDescription] = useState(
-    "By deselecting shipping protection, we are not liable for lost, damaged, or stolen products.",
-  );
+  const handleSelectedIconIndexChange = (index) => {
+    setSelectedIconIndex(index);
+    setHasChanges(true);
+    console.log("selectedIconIndex:", index);
+  };
 
-  const handleAddonTitleChange = useCallback(
-    (value) => setAddonTitle(value),
-    [],
-  );
-  const handleEnabledDescriptionChange = useCallback(
-    (value) => setEnabledDescription(value),
-    [],
-  );
-  const handleDisabledDescriptionChange = useCallback(
-    (value) => setDisabledDescription(value),
-    [],
-  );
+  const handleIconSizeChange = (value) => {
+    setIconSize(value);
+    setHasChanges(true);
+    console.log("iconSize:", value);
+  };
 
-  // New state for modal visibility
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const handleIconCornerRadiusChange = (value) => {
+    setIconCornerRadius(value);
+    setHasChanges(true);
+    console.log("iconCornerRadius:", value);
+  };
 
-  // New state for modal form fields
-  const [minimumCharge, setMinimumCharge] = useState("1");
-  const [incrementAmount, setIncrementAmount] = useState("1.01");
+  const handleWidgetBorderSizeChange = (value) => {
+    setWidgetBorderSize(value);
+    setHasChanges(true);
+    console.log("widgetBorderSize:", value);
+  };
+
+  const handleWidgetCornerRadiusChange = (value) => {
+    setWidgetCornerRadius(value);
+    setHasChanges(true);
+    console.log("widgetCornerRadius:", value);
+  };
+
+  const handleWidgetVerticalPaddingChange = (value) => {
+    setWidgetVerticalPadding(value);
+    setHasChanges(true);
+    console.log("widgetVerticalPadding:", value);
+  };
+
+  const handleWidgetHorizontalPaddingChange = (value) => {
+    setWidgetHorizontalPadding(value);
+    setHasChanges(true);
+    console.log("widgetHorizontalPadding:", value);
+  };
+
+  const handleColorStateChange = (stateKey, newColor) => {
+    setColorStates((prev) => {
+      const newState = { ...prev, [stateKey]: newColor };
+      setHasChanges(true);
+      console.log("colorStates:", newState);
+      return newState;
+    });
+  };
+
+  const handleAddonTitleChange = (value) => {
+    setAddonTitle(value);
+    setHasChanges(true);
+    console.log("addonTitle:", value);
+  };
+
+  const handleEnabledDescriptionChange = (value) => {
+    setEnabledDescription(value);
+    setHasChanges(true);
+    console.log("enabledDescription:", value);
+  };
+
+  const handleDisabledDescriptionChange = (value) => {
+    setDisabledDescription(value);
+    setHasChanges(true);
+    console.log("disabledDescription:", value);
+  };
 
   const handleOpenModal = () => setShowAdvancedSettings(true);
   const handleCloseModal = () => setShowAdvancedSettings(false);
 
-  const handleSave = () => {
-    // Placeholder for save logic
-    setShowAdvancedSettings(false);
+  const handleMinimumChargeChange = (value) => {
+    setMinimumCharge(value);
+    setHasChanges(true);
+    console.log("minimumCharge:", value);
   };
+
+  const handleIncrementAmountChange = (value) => {
+    setIncrementAmount(value);
+    setHasChanges(true);
+    console.log("incrementAmount:", value);
+  };
+
+  const handleSaveChanges = () => {
+    
+    setHasChanges(false);
+    
+    console.log("All current values:", {
+      selectedPricingOptions,
+      isWidgetPublished,
+      selectedWidgetOptions,
+      selectedVisiblityOptions,
+      selectedButtonOptions,
+      pricingValue,
+      selectedIconIndex,
+      iconSize,
+      iconCornerRadius,
+      widgetBorderSize,
+      widgetCornerRadius,
+      widgetVerticalPadding,
+      widgetHorizontalPadding,
+      colorStates,
+      addonTitle,
+      enabledDescription,
+      disabledDescription,
+      minimumCharge,
+      incrementAmount,
+    });
+  };
+
+  const handleDiscardChanges = () => {
+    setSelectedPricingOptions(initialState.selectedPricingOptions);
+    setIsWidgetPublished(initialState.isWidgetPublished);
+    setSelectedWidgetOptions(initialState.selectedWidgetOptions);
+    setSelectedVisiblityOptions(initialState.selectedVisiblityOptions);
+    setSelectedButtonOptions(initialState.selectedButtonOptions);
+    setPricingValue(initialState.pricingValue);
+    setSelectedIconIndex(initialState.selectedIconIndex);
+    setIconSize(initialState.iconSize);
+    setIconCornerRadius(initialState.iconCornerRadius);
+    setWidgetBorderSize(initialState.widgetBorderSize);
+    setWidgetCornerRadius(initialState.widgetCornerRadius);
+    setWidgetVerticalPadding(initialState.widgetVerticalPadding);
+    setWidgetHorizontalPadding(initialState.widgetHorizontalPadding);
+    setColorStates(initialState.colorStates);
+    setAddonTitle(initialState.addonTitle);
+    setEnabledDescription(initialState.enabledDescription);
+    setDisabledDescription(initialState.disabledDescription);
+    setShowAdvancedSettings(initialState.showAdvancedSettings);
+    setMinimumCharge(initialState.minimumCharge);
+    setIncrementAmount(initialState.incrementAmount);
+    setHasChanges(false);
+    console.log("Changes discarded");
+    console.log("Reset to initial values:", initialState);
+  };
+
+
 
   return (
     <div className={styles.protectionWidget}>
@@ -241,11 +423,11 @@ export default function AdditionalPage() {
                       <AutocompleteMultiSelect
                         options={pricingOptions}
                         selectedOptions={selectedPricingOptions}
-                        onSelect={setSelectedPricingOptions}
+                        onSelect={handleSelectedPricingOptionsChange}
                       />
                       <TextField
                         type="number"
-                        onChange={(value) => setPricingValue(value)}
+                        onChange={handlePricingValueChange}
                         value={pricingValue}
                         step={
                           selectedPricingOptions.includes("percentage")
@@ -277,7 +459,7 @@ export default function AdditionalPage() {
                     <AutocompleteMultiSelect
                       options={widgetOptions}
                       selectedOptions={selectedWidgetOptions}
-                      onSelect={setSelectedWidgetOptions}
+                      onSelect={handleSelectedWidgetOptionsChange}
                     />
                   </InlineGrid>
                 </BlockStack>
@@ -310,7 +492,7 @@ export default function AdditionalPage() {
                             } ${isDisabled ? styles.disabledIcon : ""}`}
                             onClick={() => {
                               if (!isDisabled) {
-                                setSelectedIconIndex(index);
+                                handleSelectedIconIndexChange(index);
                               }
                             }}
                             style={{
@@ -324,7 +506,7 @@ export default function AdditionalPage() {
                                 (e.key === "Enter" || e.key === " ") &&
                                 !isDisabled
                               ) {
-                                setSelectedIconIndex(index);
+                                handleSelectedIconIndexChange(index);
                               }
                             }}
                           >
@@ -341,12 +523,12 @@ export default function AdditionalPage() {
                       <AutocompleteMultiSelect
                         options={VisiblityOptions}
                         selectedOptions={selectedVisiblityOptions}
-                        onSelect={setSelectedVisiblityOptions}
+                        onSelect={handleSelectedVisiblityOptionsChange}
                       />
                       <AutocompleteMultiSelect
                         options={ButtonOptions}
                         selectedOptions={selectedButtonOptions}
-                        onSelect={setSelectedButtonOptions}
+                        onSelect={handleSelectedButtonOptionsChange}
                       />
                     </InlineGrid>
 
@@ -366,7 +548,7 @@ export default function AdditionalPage() {
                           value={iconSize}
                           min={40}
                           max={100}
-                          onChange={setIconSize}
+                          onChange={handleIconSizeChange}
                           output
                         />
 
@@ -375,7 +557,7 @@ export default function AdditionalPage() {
                           value={iconCornerRadius}
                           min={0}
                           max={40}
-                          onChange={setIconCornerRadius}
+                          onChange={handleIconCornerRadiusChange}
                           output
                         />
                         <RangeSliderReusable
@@ -383,7 +565,7 @@ export default function AdditionalPage() {
                           value={widgetBorderSize}
                           min={0}
                           max={15}
-                          onChange={setWidgetBorderSize}
+                          onChange={handleWidgetBorderSizeChange}
                           output
                         />
                         <RangeSliderReusable
@@ -391,7 +573,7 @@ export default function AdditionalPage() {
                           value={widgetCornerRadius}
                           min={0}
                           max={40}
-                          onChange={setWidgetCornerRadius}
+                          onChange={handleWidgetCornerRadiusChange}
                           output
                         />
                         <RangeSliderReusable
@@ -399,7 +581,7 @@ export default function AdditionalPage() {
                           value={widgetVerticalPadding}
                           min={0}
                           max={50}
-                          onChange={setWidgetVerticalPadding}
+                          onChange={handleWidgetVerticalPaddingChange}
                           output
                         />
                         <RangeSliderReusable
@@ -407,7 +589,7 @@ export default function AdditionalPage() {
                           value={widgetHorizontalPadding}
                           min={0}
                           max={50}
-                          onChange={setWidgetHorizontalPadding}
+                          onChange={handleWidgetHorizontalPaddingChange}
                           output
                         />
                       </InlineGrid>
@@ -450,10 +632,7 @@ export default function AdditionalPage() {
                             label={label}
                             colorState={colorStates[state]}
                             onChange={(newColor) =>
-                              setColorStates((prev) => ({
-                                ...prev,
-                                [state]: newColor,
-                              }))
+                              handleColorStateChange(state, newColor)
                             }
                           />
                         ))}
@@ -498,10 +677,7 @@ export default function AdditionalPage() {
                             label={label}
                             colorState={colorStates[state]}
                             onChange={(newColor) =>
-                              setColorStates((prev) => ({
-                                ...prev,
-                                [state]: newColor,
-                              }))
+                              handleColorStateChange(state, newColor)
                             }
                           />
                         ))}
@@ -523,7 +699,7 @@ export default function AdditionalPage() {
                     <TextField
                       label="Add-on title"
                       value={addonTitle}
-                      onChange={handleAddonTitleChange}
+                      onChange={(value) => handleAddonTitleChange(value)}
                       maxLength={50}
                       autoComplete="off"
                       showCharacterCount
@@ -531,7 +707,9 @@ export default function AdditionalPage() {
                     <TextField
                       label="Enabled description"
                       value={enabledDescription}
-                      onChange={handleEnabledDescriptionChange}
+                      onChange={(value) =>
+                        handleEnabledDescriptionChange(value)
+                      }
                       maxLength={200}
                       autoComplete="off"
                       showCharacterCount
@@ -540,7 +718,9 @@ export default function AdditionalPage() {
                     <TextField
                       label="Disabled description"
                       value={disabledDescription}
-                      onChange={handleDisabledDescriptionChange}
+                      onChange={(value) =>
+                        handleDisabledDescriptionChange(value)
+                      }
                       maxLength={200}
                       autoComplete="off"
                       showCharacterCount
@@ -549,6 +729,19 @@ export default function AdditionalPage() {
                   </BlockStack>
                 </BlockStack>
               </Card>
+
+              {hasChanges && (
+               
+                  <InlineGrid columns="auto auto" gap="200" alignItems="center">
+                    <Button variant="primary" onClick={handleSaveChanges}>
+                      Save
+                    </Button>
+                    <Button variant="secondary" onClick={handleDiscardChanges}>
+                      Discard
+                    </Button>
+                  </InlineGrid>
+              
+              )}
             </BlockStack>
           </Layout.Section>
         </Layout>
@@ -560,7 +753,7 @@ export default function AdditionalPage() {
         title="Advanced setting"
         primaryAction={{
           content: "Save",
-          onAction: handleSave,
+          onAction: handleSaveChanges,
           disabled: false,
         }}
         secondaryActions={[
@@ -576,7 +769,7 @@ export default function AdditionalPage() {
               label="Minimum charge"
               type="number"
               value={minimumCharge}
-              onChange={(value) => setMinimumCharge(value)}
+              onChange={(value) => handleMinimumChargeChange(value)}
               suffix="₹"
               autoComplete="off"
             />
@@ -584,7 +777,7 @@ export default function AdditionalPage() {
               label="Increment amount"
               type="number"
               value={incrementAmount}
-              onChange={(value) => setIncrementAmount(value)}
+              onChange={(value) => handleIncrementAmountChange(value)}
               suffix="₹"
               autoComplete="off"
             />
