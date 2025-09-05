@@ -481,15 +481,15 @@ export default function AdditionalPage() {
                           { label: "Label title", state: "Labeltitle" },
                           { label: "Description", state: "description" },
                           {
-                            label: "Protected widget text",
+                            label: "Widget text",
                             state: "protectedWidgetText",
                           },
                           {
-                            label: "Basic checkout button text",
+                            label: "Checkout button text",
                             state: "checkoutButtonText",
                           },
                           {
-                            label: "Protected widget background",
+                            label: "Widget background",
                             state: "protectedWidgetBackground",
                           },
                         ].map(({ label, state }) => (
