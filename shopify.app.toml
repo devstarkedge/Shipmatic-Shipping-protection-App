@@ -2,7 +2,7 @@
 
 client_id = "c190f5a3ad11171a5f6140b73cad5be7"
 name = "Shipmatic"
-application_url = "https://tent-innovative-continuing-ppc.trycloudflare.com"
+application_url = "https://gasoline-issn-spam-territory.trycloudflare.com"
 embedded = true
 handle = "shipmatic-1"
 
@@ -26,7 +26,7 @@ api_version = "2025-07"
 scopes = "write_products"
 
 [auth]
-redirect_urls = ["https://tent-innovative-continuing-ppc.trycloudflare.com/auth/callback", "https://tent-innovative-continuing-ppc.trycloudflare.com/auth/shopify/callback", "https://tent-innovative-continuing-ppc.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://gasoline-issn-spam-territory.trycloudflare.com/auth/callback", "https://gasoline-issn-spam-territory.trycloudflare.com/auth/shopify/callback", "https://gasoline-issn-spam-territory.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false

@@ -18,7 +18,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import styles from "./_index/styles.module.css";
 import AutocompleteMultiSelect from "../components/AutocompleteMultiSelect";
 import RangeSliderReusable from "../components/RangeSliderReusable";
-import ColorPickerWithHexInput from "./ColorPickerWithHexInput";
+import ColorPickerWithHexInput from "../components/ColorPickerWithHexInput";
 
 export default function AdditionalPage() {
   const pricingOptions = useMemo(
@@ -113,6 +113,11 @@ export default function AdditionalPage() {
     optInActionColor: "#cc62c7",
     optOutActionColor: "#e7e7e7",
     borderColor: "#e7e7e7",
+    Labeltitle: "#000000",
+    description: "#282828",
+    protectedWidgetText: "#000000",
+    checkoutButtonText: "#ffffff",
+    protectedWidgetBackground: "#ffffff",
   });
 
   console.log(colorStates);
@@ -278,183 +283,233 @@ export default function AdditionalPage() {
                 </BlockStack>
               </Card>
 
-              <Card roundedAbove="sm">
-                <BlockStack gap="300">
-                  <InlineGrid columns="1fr auto">
-                    <Text as="h2" variant="headingMd" fontWeight="bold">
-                      Customized style
+              {selectedWidgetOptions.includes("standard") && (
+                <Card roundedAbove="sm">
+                  <BlockStack gap="300">
+                    <InlineGrid columns="1fr auto">
+                      <Text as="h2" variant="headingMd" fontWeight="bold">
+                        Customized style
+                      </Text>
+                    </InlineGrid>
+                    <Text as="p" variant="bodySm">
+                      Widget icon
                     </Text>
-                  </InlineGrid>
-                  <Text as="p" variant="bodySm">
-                    Widget icon
-                  </Text>
-                </BlockStack>
+                  </BlockStack>
 
-                <BlockStack gap="400">
-                  <div className={styles.widgetIcons}>
-                    {widgetIcons.map((src, index) => {
-                      const isDisabled = index === widgetIcons.length - 1;
-                      return (
-                        <div
-                          key={index}
-                          className={`${styles.widgetIconsItems} ${
-                            selectedIconIndex === index
-                              ? styles.selectedIcon
-                              : ""
-                          } ${isDisabled ? styles.disabledIcon : ""}`}
-                          onClick={() => {
-                            if (!isDisabled) {
-                              setSelectedIconIndex(index);
-                            }
-                          }}
-                          style={{
-                            cursor: isDisabled ? "not-allowed" : "pointer",
-                          }}
-                          role="radio"
-                          aria-checked={selectedIconIndex === index}
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (
-                              (e.key === "Enter" || e.key === " ") &&
-                              !isDisabled
-                            ) {
-                              setSelectedIconIndex(index);
-                            }
-                          }}
-                        >
-                          <div>
-                            <img src={src} alt={`Icon ${index + 1}`} />
-                            {isDisabled && <p>Custom icon</p>}
+                  <BlockStack gap="400">
+                    <div className={styles.widgetIcons}>
+                      {widgetIcons.map((src, index) => {
+                        const isDisabled = index === widgetIcons.length - 1;
+                        return (
+                          <div
+                            key={index}
+                            className={`${styles.widgetIconsItems} ${
+                              selectedIconIndex === index
+                                ? styles.selectedIcon
+                                : ""
+                            } ${isDisabled ? styles.disabledIcon : ""}`}
+                            onClick={() => {
+                              if (!isDisabled) {
+                                setSelectedIconIndex(index);
+                              }
+                            }}
+                            style={{
+                              cursor: isDisabled ? "not-allowed" : "pointer",
+                            }}
+                            role="radio"
+                            aria-checked={selectedIconIndex === index}
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (
+                                (e.key === "Enter" || e.key === " ") &&
+                                !isDisabled
+                              ) {
+                                setSelectedIconIndex(index);
+                              }
+                            }}
+                          >
+                            <div>
+                              <img src={src} alt={`Icon ${index + 1}`} />
+                              {isDisabled && <p>Custom icon</p>}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
 
-                  <InlineGrid columns="2" gap="300">
-                    <AutocompleteMultiSelect
-                      options={VisiblityOptions}
-                      selectedOptions={selectedVisiblityOptions}
-                      onSelect={setSelectedVisiblityOptions}
-                    />
-                    <AutocompleteMultiSelect
-                      options={ButtonOptions}
-                      selectedOptions={selectedButtonOptions}
-                      onSelect={setSelectedButtonOptions}
-                    />
-                  </InlineGrid>
-
-                  <Divider />
-
-                  <BlockStack gap="200">
-                    <Text as="h2" variant="headingMd" fontWeight="bold">
-                      Size and spacing
-                    </Text>
-
-                    <InlineGrid
-                      gap="400"
-                      columns={{ xs: 1, sm: 2, md: 3, lg: 4, xl: 5 }}
-                    >
-                      <RangeSliderReusable
-                        label="Icon size"
-                        value={iconSize}
-                        min={40}
-                        max={100}
-                        onChange={setIconSize}
-                        output
+                    <InlineGrid columns="2" gap="300">
+                      <AutocompleteMultiSelect
+                        options={VisiblityOptions}
+                        selectedOptions={selectedVisiblityOptions}
+                        onSelect={setSelectedVisiblityOptions}
                       />
-
-                      <RangeSliderReusable
-                        label="Icon corner radius"
-                        value={iconCornerRadius}
-                        min={0}
-                        max={40}
-                        onChange={setIconCornerRadius}
-                        output
-                      />
-                      <RangeSliderReusable
-                        label="Widget border size"
-                        value={widgetBorderSize}
-                        min={0}
-                        max={15}
-                        onChange={setWidgetBorderSize}
-                        output
-                      />
-                      <RangeSliderReusable
-                        label="Widget corner radius"
-                        value={widgetCornerRadius}
-                        min={0}
-                        max={40}
-                        onChange={setWidgetCornerRadius}
-                        output
-                      />
-                      <RangeSliderReusable
-                        label="Widget vertical padding"
-                        value={widgetVerticalPadding}
-                        min={0}
-                        max={50}
-                        onChange={setWidgetVerticalPadding}
-                        output
-                      />
-                      <RangeSliderReusable
-                        label="Widget horizontal padding"
-                        value={widgetHorizontalPadding}
-                        min={0}
-                        max={50}
-                        onChange={setWidgetHorizontalPadding}
-                        output
+                      <AutocompleteMultiSelect
+                        options={ButtonOptions}
+                        selectedOptions={selectedButtonOptions}
+                        onSelect={setSelectedButtonOptions}
                       />
                     </InlineGrid>
-                  </BlockStack>
 
-                  <Divider />
+                    <Divider />
 
-                  <BlockStack gap="200">
-                    <Text as="h2" variant="headingMd" fontWeight="bold">
-                      Colors
-                    </Text>
+                    <BlockStack gap="200">
+                      <Text as="h2" variant="headingMd" fontWeight="bold">
+                        Size and spacing
+                      </Text>
 
-                    <InlineGrid
-                      gap="400"
-                      columns={{ xs: 1, sm: 2, md: 3, lg: 4, xl: 5 }}
-                    >
-                      {[
-                        { label: "Title", state: "titleColor" },
-                        { label: "Background", state: "backgroundColor" },
-                        {
-                          label: "Enable description",
-                          state: "enableDescColor",
-                        },
-                        {
-                          label: "Disabled description",
-                          state: "disabledDescColor",
-                        },
-                        {
-                          label: "Opt-in action button",
-                          state: "optInActionColor",
-                        },
-                        {
-                          label: "Opt-out action button",
-                          state: "optOutActionColor",
-                        },
-                        { label: "Border color", state: "borderColor" },
-                      ].map(({ label, state }) => (
-                        <ColorPickerWithHexInput
-                          key={state}
-                          label={label}
-                          colorState={colorStates[state]}
-                          onChange={(newColor) =>
-                            setColorStates((prev) => ({
-                              ...prev,
-                              [state]: newColor,
-                            }))
-                          }
+                      <InlineGrid
+                        gap="400"
+                        columns={{ xs: 1, sm: 2, md: 3, lg: 4, xl: 5 }}
+                      >
+                        <RangeSliderReusable
+                          label="Icon size"
+                          value={iconSize}
+                          min={40}
+                          max={100}
+                          onChange={setIconSize}
+                          output
                         />
-                      ))}
-                    </InlineGrid>
+
+                        <RangeSliderReusable
+                          label="Icon corner radius"
+                          value={iconCornerRadius}
+                          min={0}
+                          max={40}
+                          onChange={setIconCornerRadius}
+                          output
+                        />
+                        <RangeSliderReusable
+                          label="Widget border size"
+                          value={widgetBorderSize}
+                          min={0}
+                          max={15}
+                          onChange={setWidgetBorderSize}
+                          output
+                        />
+                        <RangeSliderReusable
+                          label="Widget corner radius"
+                          value={widgetCornerRadius}
+                          min={0}
+                          max={40}
+                          onChange={setWidgetCornerRadius}
+                          output
+                        />
+                        <RangeSliderReusable
+                          label="Widget vertical padding"
+                          value={widgetVerticalPadding}
+                          min={0}
+                          max={50}
+                          onChange={setWidgetVerticalPadding}
+                          output
+                        />
+                        <RangeSliderReusable
+                          label="Widget horizontal padding"
+                          value={widgetHorizontalPadding}
+                          min={0}
+                          max={50}
+                          onChange={setWidgetHorizontalPadding}
+                          output
+                        />
+                      </InlineGrid>
+                    </BlockStack>
+
+                    <Divider />
+
+                    <BlockStack gap="200">
+                      <Text as="h2" variant="headingMd" fontWeight="bold">
+                        Colors
+                      </Text>
+
+                      <InlineGrid
+                        gap="400"
+                        columns={{ xs: 1, sm: 2, md: 3, lg: 4, xl: 5 }}
+                      >
+                        {[
+                          { label: "Title", state: "titleColor" },
+                          { label: "Background", state: "backgroundColor" },
+                          {
+                            label: "Enable description",
+                            state: "enableDescColor",
+                          },
+                          {
+                            label: "Disabled description",
+                            state: "disabledDescColor",
+                          },
+                          {
+                            label: "Opt-in action button",
+                            state: "optInActionColor",
+                          },
+                          {
+                            label: "Opt-out action button",
+                            state: "optOutActionColor",
+                          },
+                          { label: "Border color", state: "borderColor" },
+                        ].map(({ label, state }) => (
+                          <ColorPickerWithHexInput
+                            key={state}
+                            label={label}
+                            colorState={colorStates[state]}
+                            onChange={(newColor) =>
+                              setColorStates((prev) => ({
+                                ...prev,
+                                [state]: newColor,
+                              }))
+                            }
+                          />
+                        ))}
+                      </InlineGrid>
+                    </BlockStack>
                   </BlockStack>
-                </BlockStack>
-              </Card>
+                </Card>
+              )}
+
+              {selectedWidgetOptions.includes("checkout") && (
+                <Card roundedAbove="sm">
+                  <BlockStack gap="200">
+                    <InlineGrid columns="1fr auto" alignItems="center">
+                      <Text as="h2" variant="headingMd" fontWeight="bold">
+                        Customized style
+                      </Text>
+                    </InlineGrid>
+
+                    <BlockStack gap="200">
+                      <InlineGrid
+                        gap="400"
+                        columns={{ xs: 1, sm: 2, md: 3, lg: 4, xl: 5 }}
+                      >
+                        {[
+                          { label: "Label title", state: "Labeltitle" },
+                          { label: "Description", state: "description" },
+                          {
+                            label: "Protected widget text",
+                            state: "protectedWidgetText",
+                          },
+                          {
+                            label: "Basic checkout button text",
+                            state: "checkoutButtonText",
+                          },
+                          {
+                            label: "Protected widget background",
+                            state: "protectedWidgetBackground",
+                          },
+                        ].map(({ label, state }) => (
+                          <ColorPickerWithHexInput
+                            key={state}
+                            label={label}
+                            colorState={colorStates[state]}
+                            onChange={(newColor) =>
+                              setColorStates((prev) => ({
+                                ...prev,
+                                [state]: newColor,
+                              }))
+                            }
+                          />
+                        ))}
+                      </InlineGrid>
+                    </BlockStack>
+                  </BlockStack>
+                </Card>
+              )}
 
               <Card roundedAbove="sm">
                 <BlockStack gap="200">
@@ -535,16 +590,13 @@ export default function AdditionalPage() {
             />
             <Text as="p" variant="bodySm" color="subdued">
               As the size of the cart grows, the shipping protection pricing
-              escalates. 
-              
-               Customers will incur charges in multiples of Rs. 1.01,
+              escalates. Customers will incur charges in multiples of Rs. 1.01,
               starting with a base fee of Rs. 1.00 , capped at a maximum charge
               of Rs. 99.98.{" "}
               <a href="#" className={styles.polarisLink}>
                 Learn more
               </a>
             </Text>
-            
           </FormLayout>
         </Modal.Section>
       </Modal>
