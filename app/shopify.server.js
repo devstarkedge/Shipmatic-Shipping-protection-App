@@ -34,3 +34,65 @@ export const login = shopify.login;
 export const registerWebhooks = shopify.registerWebhooks;
 export const sessionStorage = shopify.sessionStorage;
 
+export async function createOrUpdateProduct(request, title, price, imageUrl) {
+  const { admin } = await authenticate.admin(request);
+
+  // Find existing product by title
+  const findRes = await admin.graphql(`#graphql
+    query {
+      products(first: 1, query: "title: ${title}") {
+        edges { node { id title variants(first: 1) { edges { node { id price } } } } }
+      }
+    }`);
+  const findJson = await findRes.json();
+  const existingProduct = findJson.data.products.edges[0]?.node;
+
+  let productId, variantId;
+
+  if (existingProduct) {
+    productId = existingProduct.id;
+    variantId = existingProduct.variants.edges[0].node.id;
+  } else {
+    // Create new product
+    const createRes = await admin.graphql(`#graphql
+      mutation {
+        productCreate(input: {title: "${title}"}) {
+          product { id variants(first: 1) { edges { node { id } } } }
+        }
+      }`);
+    const createJson = await createRes.json();
+    productId = createJson.data.productCreate.product.id;
+    variantId = createJson.data.productCreate.product.variants.edges[0].node.id;
+  }
+
+  // Update price
+  const updatePriceRes = await admin.graphql(`#graphql
+    mutation {
+      productVariantsBulkUpdate(
+        productId: "${productId}",
+        variants: [{ id: "${variantId}", price: "${price}" }]
+      ) {
+        productVariants { id price }
+      }
+    }`);
+  const updatePriceJson = await updatePriceRes.json();
+
+  // Update image if provided
+  if (imageUrl) {
+    const updateImageRes = await admin.graphql(`#graphql
+      mutation {
+        productUpdate(input: {
+          id: "${productId}",
+          images: [{ src: "${imageUrl}" }]
+        }) {
+          product { id images { edges { node { src } } } }
+        }
+      }`);
+    const updateImageJson = await updateImageRes.json();
+  }
+
+  return {
+    productId,
+    price: updatePriceJson.data.productVariantsBulkUpdate.productVariants[0].price
+  };
+}

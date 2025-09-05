@@ -19,8 +19,15 @@ import styles from "./_index/styles.module.css";
 import AutocompleteMultiSelect from "../components/AutocompleteMultiSelect";
 import RangeSliderReusable from "../components/RangeSliderReusable";
 import ColorPickerWithHexInput from "../components/ColorPickerWithHexInput";
+import { useFetcher } from "@remix-run/react";
 
 export default function AdditionalPage() {
+  const fetcher = useFetcher();
+
+  // Debug fetcher state
+  console.log("Fetcher state:", fetcher.state);
+  console.log("Fetcher data:", fetcher.data);
+
   const initialState = {
     selectedPricingOptions: ["percentage"],
     isWidgetPublished: false,
@@ -286,10 +293,40 @@ export default function AdditionalPage() {
   };
 
   const handleSaveChanges = () => {
-    
+    const formData = new FormData();
+
+    // Serialize the data as form data
+    formData.append("selectedPricingOptions", JSON.stringify(selectedPricingOptions));
+    formData.append("isWidgetPublished", isWidgetPublished.toString());
+    formData.append("selectedWidgetOptions", JSON.stringify(selectedWidgetOptions));
+    formData.append("selectedVisiblityOptions", JSON.stringify(selectedVisiblityOptions));
+    formData.append("selectedButtonOptions", JSON.stringify(selectedButtonOptions));
+    formData.append("pricingValue", pricingValue);
+    formData.append("selectedIconIndex", selectedIconIndex.toString());
+    formData.append("iconSize", iconSize.toString());
+    formData.append("iconCornerRadius", iconCornerRadius.toString());
+    formData.append("widgetBorderSize", widgetBorderSize.toString());
+    formData.append("widgetCornerRadius", widgetCornerRadius.toString());
+    formData.append("widgetVerticalPadding", widgetVerticalPadding.toString());
+    formData.append("widgetHorizontalPadding", widgetHorizontalPadding.toString());
+    formData.append("colorStates", JSON.stringify(colorStates));
+    formData.append("addonTitle", addonTitle);
+    formData.append("enabledDescription", enabledDescription);
+    formData.append("disabledDescription", disabledDescription);
+    formData.append("minimumCharge", minimumCharge);
+    formData.append("incrementAmount", incrementAmount);
+
+    console.log("Submitting form data to create product...");
+    console.log("FormData contents:", Array.from(formData.entries()));
+
+    fetcher.submit(formData, {
+      method: "POST",
+      action: "/app/protectionWidget/createProduct",
+    });
+
     setHasChanges(false);
-    
-    console.log("All current values:", {
+
+    console.log("Creating shipping protection product with data:", {
       selectedPricingOptions,
       isWidgetPublished,
       selectedWidgetOptions,
