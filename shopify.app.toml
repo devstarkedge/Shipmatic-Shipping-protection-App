@@ -2,7 +2,7 @@
 
 client_id = "c190f5a3ad11171a5f6140b73cad5be7"
 name = "Shipmatic"
-application_url = "https://employ-emails-giants-striking.trycloudflare.com"
+application_url = "https://iso-returned-alaska-charleston.trycloudflare.com"
 embedded = true
 handle = "shipmatic-1"
 
@@ -26,7 +26,7 @@ api_version = "2025-07"
 scopes = "write_products"
 
 [auth]
-redirect_urls = ["https://employ-emails-giants-striking.trycloudflare.com/auth/callback", "https://employ-emails-giants-striking.trycloudflare.com/auth/shopify/callback", "https://employ-emails-giants-striking.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://iso-returned-alaska-charleston.trycloudflare.com/auth/callback", "https://iso-returned-alaska-charleston.trycloudflare.com/auth/shopify/callback", "https://iso-returned-alaska-charleston.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false

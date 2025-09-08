@@ -33,6 +33,15 @@ export const action = async ({ request }) => {
 
   const { admin } = await authenticate.admin(request);
 
+  // Get selected icon URL from widgetIcons array
+  const widgetIcons = [
+    "https://2766624.fs1.hubspotusercontent-na1.net/hubfs/2766624/Shipmatic/icon1.png",
+    "https://2766624.fs1.hubspotusercontent-na1.net/hubfs/2766624/Shipmatic/icon2.png",
+    "https://2766624.fs1.hubspotusercontent-na1.net/hubfs/2766624/Shipmatic/icon3.png",
+    "https://2766624.fs1.hubspotusercontent-na1.net/hubfs/2766624/Shipmatic/icon4.png",
+  ];
+  const selectedIconUrl = widgetIcons[widgetData.selectedIconIndex] || widgetIcons[0];
+
   try {
     // Calculate price based on pricing options
     let price = "0";
@@ -53,6 +62,18 @@ export const action = async ({ request }) => {
             node {
               id
               title
+              media(first: 10) {
+                edges {
+                  node {
+                    id
+                    ... on MediaImage {
+                      image {
+                        url
+                      }
+                    }
+                  }
+                }
+              }
               variants(first: 1) {
                 edges {
                   node {
@@ -74,6 +95,25 @@ export const action = async ({ request }) => {
       product = findJson.data.products.edges[0].node;
       variant = product.variants.edges[0].node;
       console.log("Found existing shipping protection product:", product.id);
+
+      // Delete existing images
+      for (const mediaEdge of product.media.edges) {
+        const mediaId = mediaEdge.node.id;
+        console.log("Deleting existing product media:", mediaId);
+        await admin.graphql(`#graphql
+          mutation {
+            productDeleteMedia(
+              productId: "${product.id}",
+              mediaIds: ["${mediaId}"]
+            ) {
+              deletedMediaIds
+              userErrors {
+                field
+                message
+              }
+            }
+          }`);
+      }
     } else {
       // Create new product
       const createProductRes = await admin.graphql(`#graphql
@@ -144,6 +184,39 @@ export const action = async ({ request }) => {
     }
 
     const updatedVariant = updateVariantJson.data.productVariantsBulkUpdate.productVariants[0];
+
+    // Add new product image
+    console.log("Adding new product image from URL:", selectedIconUrl);
+    const addImageRes = await admin.graphql(`#graphql
+      mutation {
+        productCreateMedia(
+          productId: "${product.id}",
+          media: {
+            originalSource: "${selectedIconUrl}",
+            mediaContentType: IMAGE
+          }
+        ) {
+          media {
+            id
+            ... on MediaImage {
+              image {
+                url
+              }
+            }
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }`);
+
+    const addImageJson = await addImageRes.json();
+    if (addImageJson.data.productCreateMedia.userErrors.length > 0) {
+      console.warn("Warning: Could not add product image:", addImageJson.data.productCreateMedia.userErrors[0].message);
+    } else {
+      console.log("Added new product image:", addImageJson.data.productCreateMedia.media.id);
+    }
 
     return {
       success: true,
