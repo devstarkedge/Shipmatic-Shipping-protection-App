@@ -1,4 +1,5 @@
 import { authenticate } from "../shopify.server";
+import prisma from "../db.server";
 
 export const action = async ({ request }) => {
   console.log("CreateProduct action called!");
@@ -43,7 +44,7 @@ export const action = async ({ request }) => {
 
   console.log("Received widget data:", widgetData);
 
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
 
   // Get selected icon URL from widgetIcons array
   const widgetIcons = [
@@ -321,6 +322,29 @@ export const action = async ({ request }) => {
       console.log("Product published:", publishData.product.id);
       published = true;
     }
+
+    // Save to database
+    await prisma.product.upsert({
+      where: { id: product.id },
+      update: {
+        title: product.title,
+        description: productDescription,
+        price: updatedVariant.price,
+        variantId: updatedVariant.id,
+        imageUrl: selectedIconUrl,
+        published: published,
+      },
+      create: {
+        id: product.id,
+        shop: session.shop,
+        title: product.title,
+        description: productDescription,
+        price: updatedVariant.price,
+        variantId: updatedVariant.id,
+        imageUrl: selectedIconUrl,
+        published: published,
+      },
+    });
 
     return {
       success: true,

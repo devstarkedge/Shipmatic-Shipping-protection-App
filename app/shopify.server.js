@@ -35,7 +35,7 @@ export const registerWebhooks = shopify.registerWebhooks;
 export const sessionStorage = shopify.sessionStorage;
 
 export async function createOrUpdateProduct(request, title, price, imageUrl) {
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
 
   // Find existing product by title
   const findRes = await admin.graphql(`#graphql
@@ -90,6 +90,27 @@ export async function createOrUpdateProduct(request, title, price, imageUrl) {
       }`);
     const updateImageJson = await updateImageRes.json();
   }
+
+  // Save to database
+  await prisma.product.upsert({
+    where: { id: productId },
+    update: {
+      title: title,
+      price: updatePriceJson.data.productVariantsBulkUpdate.productVariants[0].price,
+      variantId: variantId,
+      imageUrl: imageUrl || null,
+      published: false,
+    },
+    create: {
+      id: productId,
+      shop: session.shop,
+      title: title,
+      price: updatePriceJson.data.productVariantsBulkUpdate.productVariants[0].price,
+      variantId: variantId,
+      imageUrl: imageUrl || null,
+      published: false,
+    },
+  });
 
   return {
     productId,

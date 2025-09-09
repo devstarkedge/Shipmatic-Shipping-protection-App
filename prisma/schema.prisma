@@ -30,3 +30,16 @@ model Session {
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
 }
+
+model Product {
+  id          String   @id @default(cuid())
+  shop        String
+  title       String
+  description String?
+  price       String
+  variantId   String
+  imageUrl    String?
+  published   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
