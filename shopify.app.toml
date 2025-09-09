@@ -2,7 +2,7 @@
 
 client_id = "c190f5a3ad11171a5f6140b73cad5be7"
 name = "Shipmatic"
-application_url = "https://iso-returned-alaska-charleston.trycloudflare.com"
+application_url = "https://evans-show-weights-jump.trycloudflare.com"
 embedded = true
 handle = "shipmatic-1"
 
@@ -23,10 +23,10 @@ api_version = "2025-07"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products"
+scopes = "read_products,write_products,read_publications,write_publications"
 
 [auth]
-redirect_urls = ["https://iso-returned-alaska-charleston.trycloudflare.com/auth/callback", "https://iso-returned-alaska-charleston.trycloudflare.com/auth/shopify/callback", "https://iso-returned-alaska-charleston.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://evans-show-weights-jump.trycloudflare.com/auth/callback", "https://evans-show-weights-jump.trycloudflare.com/auth/shopify/callback", "https://evans-show-weights-jump.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false

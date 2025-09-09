@@ -8,19 +8,31 @@ export const action = async ({ request }) => {
 
   const formData = await request.formData();
   const widgetData = {
-    selectedPricingOptions: JSON.parse(formData.get("selectedPricingOptions") || "[]"),
+    selectedPricingOptions: JSON.parse(
+      formData.get("selectedPricingOptions") || "[]",
+    ),
     isWidgetPublished: formData.get("isWidgetPublished") === "true",
-    selectedWidgetOptions: JSON.parse(formData.get("selectedWidgetOptions") || "[]"),
-    selectedVisiblityOptions: JSON.parse(formData.get("selectedVisiblityOptions") || "[]"),
-    selectedButtonOptions: JSON.parse(formData.get("selectedButtonOptions") || "[]"),
+    selectedWidgetOptions: JSON.parse(
+      formData.get("selectedWidgetOptions") || "[]",
+    ),
+    selectedVisiblityOptions: JSON.parse(
+      formData.get("selectedVisiblityOptions") || "[]",
+    ),
+    selectedButtonOptions: JSON.parse(
+      formData.get("selectedButtonOptions") || "[]",
+    ),
     pricingValue: formData.get("pricingValue"),
     selectedIconIndex: parseInt(formData.get("selectedIconIndex") || "0"),
     iconSize: parseInt(formData.get("iconSize") || "40"),
     iconCornerRadius: parseInt(formData.get("iconCornerRadius") || "0"),
     widgetBorderSize: parseInt(formData.get("widgetBorderSize") || "0"),
     widgetCornerRadius: parseInt(formData.get("widgetCornerRadius") || "0"),
-    widgetVerticalPadding: parseInt(formData.get("widgetVerticalPadding") || "0"),
-    widgetHorizontalPadding: parseInt(formData.get("widgetHorizontalPadding") || "0"),
+    widgetVerticalPadding: parseInt(
+      formData.get("widgetVerticalPadding") || "0",
+    ),
+    widgetHorizontalPadding: parseInt(
+      formData.get("widgetHorizontalPadding") || "0",
+    ),
     colorStates: JSON.parse(formData.get("colorStates") || "{}"),
     addonTitle: formData.get("addonTitle"),
     enabledDescription: formData.get("enabledDescription"),
@@ -40,7 +52,8 @@ export const action = async ({ request }) => {
     "https://2766624.fs1.hubspotusercontent-na1.net/hubfs/2766624/Shipmatic/icon3.png",
     "https://2766624.fs1.hubspotusercontent-na1.net/hubfs/2766624/Shipmatic/icon4.png",
   ];
-  const selectedIconUrl = widgetIcons[widgetData.selectedIconIndex] || widgetIcons[0];
+  const selectedIconUrl =
+    widgetIcons[widgetData.selectedIconIndex] || widgetIcons[0];
 
   try {
     // Calculate price based on pricing options
@@ -52,8 +65,10 @@ export const action = async ({ request }) => {
     }
 
     // Check if shipping protection product already exists
-    const productTitle =  "Shipping Protections";
-    const productDescription = widgetData.enabledDescription || "Protect your order from damage, loss, or theft.";
+    const productTitle = "Shipping Protections";
+    const productDescription =
+      widgetData.enabledDescription ||
+      "Protect your order from damage, loss, or theft.";
 
     const findRes = await admin.graphql(`#graphql
       query {
@@ -170,20 +185,29 @@ export const action = async ({ request }) => {
       }`);
 
     const updateVariantJson = await updateVariantRes.json();
-    console.log("Variant update response:", JSON.stringify(updateVariantJson, null, 2));
+    console.log(
+      "Variant update response:",
+      JSON.stringify(updateVariantJson, null, 2),
+    );
 
-    if (updateVariantJson.data.productVariantsBulkUpdate.userErrors.length > 0) {
-      console.warn("Warning: Could not update variant price:", updateVariantJson.data.productVariantsBulkUpdate.userErrors[0].message);
+    if (
+      updateVariantJson.data.productVariantsBulkUpdate.userErrors.length > 0
+    ) {
+      console.warn(
+        "Warning: Could not update variant price:",
+        updateVariantJson.data.productVariantsBulkUpdate.userErrors[0].message,
+      );
       return {
         success: true,
         productId: product.id,
         variantId: variant.id,
         price: variant.price,
-        title: product.title
+        title: product.title,
       };
     }
 
-    const updatedVariant = updateVariantJson.data.productVariantsBulkUpdate.productVariants[0];
+    const updatedVariant =
+      updateVariantJson.data.productVariantsBulkUpdate.productVariants[0];
 
     // Add new product image
     console.log("Adding new product image from URL:", selectedIconUrl);
@@ -213,9 +237,89 @@ export const action = async ({ request }) => {
 
     const addImageJson = await addImageRes.json();
     if (addImageJson.data.productCreateMedia.userErrors.length > 0) {
-      console.warn("Warning: Could not add product image:", addImageJson.data.productCreateMedia.userErrors[0].message);
+      console.warn(
+        "Warning: Could not add product image:",
+        addImageJson.data.productCreateMedia.userErrors[0].message,
+      );
     } else {
-      console.log("Added new product image:", addImageJson.data.productCreateMedia.media.id);
+      console.log(
+        "Added new product image:",
+        addImageJson.data.productCreateMedia.media.id,
+      );
+    }
+    // Get the publication ID for the Online Store
+    const publicationsRes = await admin.graphql(`#graphql
+      query {
+        publications(first: 10) {
+          edges {
+            node {
+              id
+              name
+            }
+          }
+        }
+      }`);
+
+    const publicationsJson = await publicationsRes.json();
+    const onlineStorePublication = publicationsJson.data.publications.edges.find(
+      edge => edge.node.name === 'Online Store'
+    );
+
+    if (!onlineStorePublication) {
+      console.error("Could not find Online Store publication");
+      return {
+        success: true,
+        productId: product.id,
+        variantId: updatedVariant.id,
+        price: updatedVariant.price,
+        title: product.title,
+        published: false,
+      };
+    }
+
+    const publicationId = onlineStorePublication.node.id;
+    console.log("Publishing to publication:", publicationId);
+
+    // Attempt to publish the product
+    const publishRes = await admin.graphql(`#graphql
+      mutation {
+        productPublish(input: {
+          id: "${product.id}",
+          productPublications: [
+            { publicationId: "${publicationId}" }
+          ]
+        }) {
+          product {
+            id
+            title
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }`);
+
+    const publishJson = await publishRes.json();
+    const publishData = publishJson.data.productPublish;
+
+    let published = false;
+    if (publishData.userErrors.length > 0) {
+      // Check if the error is because the product is already published
+      const alreadyPublishedError = publishData.userErrors.some(error =>
+        error.message.includes("already published") ||
+        error.message.includes("is already published")
+      );
+
+      if (alreadyPublishedError) {
+        console.log("Product is already published");
+        published = true;
+      } else {
+        console.error("Publish failed:", publishData.userErrors);
+      }
+    } else {
+      console.log("Product published:", publishData.product.id);
+      published = true;
     }
 
     return {
@@ -223,7 +327,8 @@ export const action = async ({ request }) => {
       productId: product.id,
       variantId: updatedVariant.id,
       price: updatedVariant.price,
-      title: product.title
+      title: product.title,
+      published: published,
     };
   } catch (error) {
     console.error("Error creating shipping protection product:", error);
