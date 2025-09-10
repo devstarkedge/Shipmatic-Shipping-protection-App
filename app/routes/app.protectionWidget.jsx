@@ -185,9 +185,9 @@ export default function AdditionalPage() {
     // Only set default pricing value if no value is loaded from database
     if (!pricingValue || pricingValue === initialState.pricingValue) {
       if (selectedPricingOptions.includes("percentage")) {
-        setPricingValue("0.5");
+        setPricingValue("");
       } else {
-        setPricingValue("3");
+        setPricingValue("");
       }
     }
   }, [selectedPricingOptions, pricingValue]);

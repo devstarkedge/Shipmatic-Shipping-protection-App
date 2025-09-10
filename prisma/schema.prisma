@@ -1,19 +1,45 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
-// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
-// enough when changing adapters.
-// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-model Session {
+model product {
+  id                       String   @id
+  shop                     String
+  title                    String
+  description              String
+  price                    String
+  variantId                String
+  imageUrl                 String
+  published                Boolean
+  selectedPricingOptions   String?
+  isWidgetPublished        Boolean?
+  selectedWidgetOptions    String?
+  selectedVisiblityOptions String?
+  selectedButtonOptions    String?
+  pricingValue             String?
+  selectedIconIndex        Int?
+  iconSize                 Int?
+  iconCornerRadius         Int?
+  widgetBorderSize         Int?
+  widgetCornerRadius       Int?
+  widgetVerticalPadding    Int?
+  widgetHorizontalPadding  Int?
+  colorStates              String?  @db.Text
+  addonTitle               String?
+  enabledDescription       String?
+  disabledDescription      String?
+  minimumCharge            String?
+  incrementAmount          String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime
+}
+
+model session {
   id            String    @id
   shop          String
   state         String
@@ -29,37 +55,4 @@ model Session {
   locale        String?
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
-}
-
-
-model Product {
-  id                       String   @id
-  shop                     String
-  title                    String
-  description              String
-  price                    String
-  variantId                String
-  imageUrl                 String
-  published                Boolean
-  selectedPricingOptions   String?  // store as JSON string
-  isWidgetPublished        Boolean?
-  selectedWidgetOptions    String?  // store as JSON string
-  selectedVisiblityOptions String?  // store as JSON string
-  selectedButtonOptions    String?  // store as JSON string
-  pricingValue             String?
-  selectedIconIndex         Int?
-  iconSize                  Int?
-  iconCornerRadius          Int?
-  widgetBorderSize           Int?
-  widgetCornerRadius         Int?
-  widgetVerticalPadding      Int?
-  widgetHorizontalPadding    Int?
-  colorStates               String? @db.Text // store as JSON string
-  addonTitle                String?
-  enabledDescription        String?
-  disabledDescription       String?
-  minimumCharge             String?
-  incrementAmount           String?
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
 }
