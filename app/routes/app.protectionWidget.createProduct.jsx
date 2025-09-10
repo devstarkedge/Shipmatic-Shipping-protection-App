@@ -262,9 +262,10 @@ export const action = async ({ request }) => {
       }`);
 
     const publicationsJson = await publicationsRes.json();
-    const onlineStorePublication = publicationsJson.data.publications.edges.find(
-      edge => edge.node.name === 'Online Store'
-    );
+    const onlineStorePublication =
+      publicationsJson.data.publications.edges.find(
+        (edge) => edge.node.name === "Online Store",
+      );
 
     if (!onlineStorePublication) {
       console.error("Could not find Online Store publication");
@@ -307,9 +308,10 @@ export const action = async ({ request }) => {
     let published = false;
     if (publishData.userErrors.length > 0) {
       // Check if the error is because the product is already published
-      const alreadyPublishedError = publishData.userErrors.some(error =>
-        error.message.includes("already published") ||
-        error.message.includes("is already published")
+      const alreadyPublishedError = publishData.userErrors.some(
+        (error) =>
+          error.message.includes("already published") ||
+          error.message.includes("is already published"),
       );
 
       if (alreadyPublishedError) {
@@ -333,6 +335,29 @@ export const action = async ({ request }) => {
         variantId: updatedVariant.id,
         imageUrl: selectedIconUrl,
         published: published,
+        selectedPricingOptions: JSON.stringify(
+          widgetData.selectedPricingOptions,
+        ),
+        isWidgetPublished: widgetData.isWidgetPublished,
+        selectedWidgetOptions: JSON.stringify(widgetData.selectedWidgetOptions),
+        selectedVisiblityOptions: JSON.stringify(
+          widgetData.selectedVisiblityOptions,
+        ),
+        selectedButtonOptions: JSON.stringify(widgetData.selectedButtonOptions),
+        pricingValue: widgetData.pricingValue,
+        selectedIconIndex: widgetData.selectedIconIndex,
+        iconSize: widgetData.iconSize,
+        iconCornerRadius: widgetData.iconCornerRadius,
+        widgetBorderSize: widgetData.widgetBorderSize,
+        widgetCornerRadius: widgetData.widgetCornerRadius,
+        widgetVerticalPadding: widgetData.widgetVerticalPadding,
+        widgetHorizontalPadding: widgetData.widgetHorizontalPadding,
+        colorStates: JSON.stringify(widgetData.colorStates),
+        addonTitle: widgetData.addonTitle,
+        enabledDescription: widgetData.enabledDescription,
+        disabledDescription: widgetData.disabledDescription,
+        minimumCharge: widgetData.minimumCharge,
+        incrementAmount: widgetData.incrementAmount,
       },
       create: {
         id: product.id,
@@ -343,6 +368,29 @@ export const action = async ({ request }) => {
         variantId: updatedVariant.id,
         imageUrl: selectedIconUrl,
         published: published,
+        selectedPricingOptions: JSON.stringify(
+          widgetData.selectedPricingOptions,
+        ),
+        isWidgetPublished: widgetData.isWidgetPublished,
+        selectedWidgetOptions: JSON.stringify(widgetData.selectedWidgetOptions),
+        selectedVisiblityOptions: JSON.stringify(
+          widgetData.selectedVisiblityOptions,
+        ),
+        selectedButtonOptions: JSON.stringify(widgetData.selectedButtonOptions),
+        pricingValue: widgetData.pricingValue,
+        selectedIconIndex: widgetData.selectedIconIndex,
+        iconSize: widgetData.iconSize,
+        iconCornerRadius: widgetData.iconCornerRadius,
+        widgetBorderSize: widgetData.widgetBorderSize,
+        widgetCornerRadius: widgetData.widgetCornerRadius,
+        widgetVerticalPadding: widgetData.widgetVerticalPadding,
+        widgetHorizontalPadding: widgetData.widgetHorizontalPadding,
+        colorStates: JSON.stringify(widgetData.colorStates),
+        addonTitle: widgetData.addonTitle,
+        enabledDescription: widgetData.enabledDescription,
+        disabledDescription: widgetData.disabledDescription,
+        minimumCharge: widgetData.minimumCharge,
+        incrementAmount: widgetData.incrementAmount,
       },
     });
 
