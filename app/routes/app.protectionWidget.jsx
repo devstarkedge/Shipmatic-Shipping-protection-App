@@ -418,6 +418,7 @@ export default function AdditionalPage() {
     });
 
     setHasChanges(false);
+    setShowAdvancedSettings(false);
 
     console.log("Creating shipping protection product with data:", {
       selectedPricingOptions,
