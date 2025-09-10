@@ -2,7 +2,7 @@
 
 client_id = "c190f5a3ad11171a5f6140b73cad5be7"
 name = "Shipmatic"
-application_url = "https://pubmed-trustees-thou-eclipse.trycloudflare.com"
+application_url = "https://il-academy-short-publishers.trycloudflare.com"
 embedded = true
 handle = "shipmatic-1"
 
@@ -26,7 +26,7 @@ api_version = "2025-07"
 scopes = "read_products,write_products,read_publications,write_publications"
 
 [auth]
-redirect_urls = ["https://pubmed-trustees-thou-eclipse.trycloudflare.com/auth/callback", "https://pubmed-trustees-thou-eclipse.trycloudflare.com/auth/shopify/callback", "https://pubmed-trustees-thou-eclipse.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://il-academy-short-publishers.trycloudflare.com/auth/callback", "https://il-academy-short-publishers.trycloudflare.com/auth/shopify/callback", "https://il-academy-short-publishers.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false

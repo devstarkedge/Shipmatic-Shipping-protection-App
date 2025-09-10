@@ -1,12 +1,24 @@
 import { Autocomplete, Icon } from "@shopify/polaris";
 import { SelectIcon  } from "@shopify/polaris-icons";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 
 function AutocompleteMultiSelect({ options: deselectedOptions, label,  selectedOptions, onSelect }) {
-  const [inputValue, setInputValue] = useState(
-    deselectedOptions.length > 0 ? deselectedOptions[0].label : ""
-  );
+  const [inputValue, setInputValue] = useState("");
   const [options, setOptions] = useState(deselectedOptions);
+
+  // Update inputValue when selectedOptions change
+  useEffect(() => {
+    if (selectedOptions && selectedOptions.length > 0) {
+      const selectedOption = deselectedOptions.find(option =>
+        selectedOptions.includes(option.value)
+      );
+      if (selectedOption) {
+        setInputValue(selectedOption.label);
+      }
+    } else {
+      setInputValue("");
+    }
+  }, [selectedOptions, deselectedOptions]);
 
   const updateText = useCallback(
     (value) => {

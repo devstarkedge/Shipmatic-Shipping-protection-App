@@ -1,3 +1,5 @@
+import { json } from "@remix-run/node";
+import { useLoaderData } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -20,13 +22,32 @@ import AutocompleteMultiSelect from "../components/AutocompleteMultiSelect";
 import RangeSliderReusable from "../components/RangeSliderReusable";
 import ColorPickerWithHexInput from "../components/ColorPickerWithHexInput";
 import { useFetcher } from "@remix-run/react";
+import { authenticate } from "../shopify.server";
+import prisma from "../db.server";
+
+export const loader = async ({ request }) => {
+  await authenticate.admin(request);
+
+  const { session } = await authenticate.admin(request);
+
+  // Fetch existing product for this shop
+  const product = await prisma.product.findFirst({
+    where: {
+      shop: session.shop,
+    },
+  });
+
+  return json({ product });
+};
 
 export default function AdditionalPage() {
+  const { product } = useLoaderData();
   const fetcher = useFetcher();
 
   // Debug fetcher state
   console.log("Fetcher state:", fetcher.state);
   console.log("Fetcher data:", fetcher.data);
+  console.log("Loaded product:", product);
 
   const initialState = {
     selectedPricingOptions: ["percentage"],
@@ -161,12 +182,84 @@ export default function AdditionalPage() {
   ];
 
   useEffect(() => {
-    if (selectedPricingOptions.includes("percentage")) {
-      setPricingValue("0.5");
-    } else {
-      setPricingValue("3");
+    // Only set default pricing value if no value is loaded from database
+    if (!pricingValue || pricingValue === initialState.pricingValue) {
+      if (selectedPricingOptions.includes("percentage")) {
+        setPricingValue("0.5");
+      } else {
+        setPricingValue("3");
+      }
     }
-  }, [selectedPricingOptions]);
+  }, [selectedPricingOptions, pricingValue]);
+
+  // Load data from database when product is available
+  useEffect(() => {
+    if (product) {
+      console.log("Loading product data into form:", product);
+
+      // Parse and set form data from product
+      if (product.selectedPricingOptions) {
+        setSelectedPricingOptions(JSON.parse(product.selectedPricingOptions));
+      }
+      if (product.isWidgetPublished !== undefined) {
+        setIsWidgetPublished(product.isWidgetPublished);
+      }
+      if (product.selectedWidgetOptions) {
+        setSelectedWidgetOptions(JSON.parse(product.selectedWidgetOptions));
+      }
+      if (product.selectedVisiblityOptions) {
+        setSelectedVisiblityOptions(JSON.parse(product.selectedVisiblityOptions));
+      }
+      if (product.selectedButtonOptions) {
+        setSelectedButtonOptions(JSON.parse(product.selectedButtonOptions));
+      }
+      if (product.pricingValue !== undefined && product.pricingValue !== null) {
+        // Convert pricingValue to string to ensure correct display in TextField
+        setPricingValue(String(product.pricingValue));
+      }
+      if (product.selectedIconIndex !== undefined) {
+        setSelectedIconIndex(product.selectedIconIndex);
+      }
+      if (product.iconSize !== undefined) {
+        setIconSize(product.iconSize);
+      }
+      if (product.iconCornerRadius !== undefined) {
+        setIconCornerRadius(product.iconCornerRadius);
+      }
+      if (product.widgetBorderSize !== undefined) {
+        setWidgetBorderSize(product.widgetBorderSize);
+      }
+      if (product.widgetCornerRadius !== undefined) {
+        setWidgetCornerRadius(product.widgetCornerRadius);
+      }
+      if (product.widgetVerticalPadding !== undefined) {
+        setWidgetVerticalPadding(product.widgetVerticalPadding);
+      }
+      if (product.widgetHorizontalPadding !== undefined) {
+        setWidgetHorizontalPadding(product.widgetHorizontalPadding);
+      }
+      if (product.colorStates) {
+        setColorStates(JSON.parse(product.colorStates));
+      }
+      if (product.addonTitle) {
+        setAddonTitle(product.addonTitle);
+      }
+      if (product.enabledDescription) {
+        setEnabledDescription(product.enabledDescription);
+      }
+      if (product.disabledDescription) {
+        setDisabledDescription(product.disabledDescription);
+      }
+      if (product.minimumCharge) {
+        setMinimumCharge(product.minimumCharge);
+      }
+      if (product.incrementAmount) {
+        setIncrementAmount(product.incrementAmount);
+      }
+
+      console.log("Form data loaded from database");
+    }
+  }, [product]);
 
   // Handlers with change tracking and console logging
   const handleSelectedPricingOptionsChange = (value) => {
