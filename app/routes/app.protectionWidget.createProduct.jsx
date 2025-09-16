@@ -391,6 +391,7 @@ export const action = async ({ request }) => {
         disabledDescription: widgetData.disabledDescription,
         minimumCharge: widgetData.minimumCharge,
         incrementAmount: widgetData.incrementAmount,
+        updatedAt: new Date(),
       },
     });
 

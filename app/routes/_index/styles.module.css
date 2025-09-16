@@ -2,6 +2,7 @@
   max-width: 952px !important;
   margin: 0 auto !important;
   padding: 20px;
+  position: relative !important;
 }
 
 .polarisLink {
@@ -46,17 +47,15 @@
   margin-top: 5px;
 }
 
-
 .widgetIconsItems div {
- display: flex;
- flex-direction: column;
- align-items: center;
- justify-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .selectedIcon {
-  border: 1.5px solid #CC62C7 !important;
- 
+  border: 1.5px solid #cc62c7 !important;
 }
 
 .disabledIcon {
@@ -86,7 +85,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #8A8A8A;
+  background-color: #8a8a8a;
   transition: 0.4s;
   border-radius: 24px;
 }
@@ -109,4 +108,48 @@
 
 .switch input:checked + .slider:before {
   transform: translateX(20px);
+}
+
+/* New styles for popover content layout */
+.popoverContent {
+  display: flex;
+  gap: 24px;
+  padding: 16px;
+}
+
+.optionList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 160px;
+
+  padding-right: 16px;
+}
+
+.selectedOption {
+  font-weight: 600;
+  background-color: #f4f6f8;
+  border-radius: 4px;
+}
+
+.popoverButtons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.dateInputsContainer {
+  display: flex;
+  gap: 8px;
+  justify-content: space-around;
+  text-align: center;
+}
+.datepicker {
+  width: 700px !important;
+  margin-top: 20px;
+}
+.card {
+  border-radius: 5px;
+  background: linear-gradient(134deg, #faeff9 4.31%, #efeaf7 95.02%);
+  padding: 18px;
 }

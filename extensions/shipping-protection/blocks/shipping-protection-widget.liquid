@@ -1,0 +1,447 @@
+{% comment %}
+  Shipping Protection Widget Block
+  Location: extensions/shipping-protection/blocks/shipping-protection-widget.liquid
+{% endcomment %}
+
+{%- liquid
+  assign app_id = 'your-app-id'
+  assign shop_domain = shop.permanent_domain
+  assign cart_total = cart.total_price | divided_by: 100.0
+-%}
+
+<div 
+  id="shipping-protection-widget-{{ block.id }}" 
+  class="shipping-protection-widget"
+  data-shop="{{ shop_domain }}"
+  data-cart-total="{{ cart_total }}"
+  data-app-id="{{ app_id }}"
+  {{ block.shopify_attributes }}
+>
+  <div class="widget-loading" style="padding: 16px; text-align: center; color: #666;">
+    Loading shipping protection...
+  </div>
+</div>
+
+<script>
+(function() {
+  const widgetId = 'shipping-protection-widget-{{ block.id }}';
+  const container = document.getElementById(widgetId);
+  
+  if (!container) return;
+  
+  const shopDomain = container.dataset.shop;
+  const cartTotal = parseFloat(container.dataset.cartTotal) || 0;
+  const appId = container.dataset.appId;
+  
+  let widgetData = null;
+  let isProtectionSelected = false;
+  let protectionVariantId = null;
+
+  // Use the correct app proxy endpoint
+  const apiEndpoint = `/apps/shipment/cartWidget`;
+  
+  // Fetch widget data from your Remix app via app proxy
+  async function fetchWidgetData() {
+    try {
+      const loadingEl = container.querySelector('.widget-loading');
+      
+      const response = await fetch(`${apiEndpoint}?shop=${encodeURIComponent(shopDomain)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+
+      console.log(response);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success && data.widget) {
+        widgetData = data.widget;
+        protectionVariantId = widgetData.variantId;
+        renderWidget();
+      } else {
+        console.warn('Widget data not available or not published');
+        // Hide widget if no data or not published
+        container.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Error fetching shipping protection widget:', error);
+      console.error('API endpoint:', apiEndpoint);
+      console.error('Shop domain:', shopDomain);
+      
+      // Show error message in development
+      if (window.location.hostname.includes('myshopify.com')) {
+        container.innerHTML = `
+          <div style="padding: 16px; background: #fee; border: 1px solid #fcc; border-radius: 4px; color: #c33;">
+            <strong>Widget Error:</strong> ${error.message}<br>
+            <small>Endpoint: ${apiEndpoint}</small>
+          </div>
+        `;
+      } else {
+        container.style.display = 'none';
+      }
+    }
+  }
+
+  // Calculate protection price based on cart total and pricing options
+  function calculateProtectionPrice() {
+    if (!widgetData) return '0.00';
+    
+    const pricingOptions = widgetData.selectedPricingOptions || [];
+    const pricingValue = parseFloat(widgetData.pricingValue) || 0;
+    
+    if (pricingOptions.includes('percentage')) {
+      let calculatedPrice = (cartTotal * pricingValue / 100);
+      const minCharge = parseFloat(widgetData.minimumCharge) || 0;
+      const incrementAmount = parseFloat(widgetData.incrementAmount) || 0;
+      
+      // Apply minimum charge
+      if (calculatedPrice < minCharge) {
+        calculatedPrice = minCharge;
+      }
+      
+      // Apply increment logic if specified
+      if (incrementAmount > 0) {
+        calculatedPrice = Math.ceil(calculatedPrice / incrementAmount) * incrementAmount;
+      }
+      
+      return calculatedPrice.toFixed(2);
+    } else if (pricingOptions.includes('fixed')) {
+      return pricingValue.toFixed(2);
+    }
+    
+    return parseFloat(widgetData.price || 0).toFixed(2);
+  }
+
+  // Add protection product to cart
+  async function addProtectionToCart() {
+    if (!protectionVariantId) return;
+
+    const formData = {
+      items: [{
+        id: protectionVariantId,
+        quantity: 1,
+        properties: {
+          '_shipping_protection': 'true',
+          '_protection_price': calculateProtectionPrice(),
+          '_cart_total_at_time': cartTotal.toFixed(2)
+        }
+      }]
+    };
+
+    try {
+      const response = await fetch('/cart/add.js', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      });
+
+      console.log(response)
+
+      if (response.ok) {
+        // Trigger cart update events
+        document.dispatchEvent(new CustomEvent('cart:updated'));
+        
+        // Refresh page or update cart UI
+        if (typeof window.location !== 'undefined') {
+          window.location.reload();
+        }
+      } else {
+        console.error('Failed to add protection to cart', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('Error adding protection to cart:', error);
+    }
+  }
+
+  // Remove protection product from cart
+  async function removeProtectionFromCart() {
+    try {
+      // Get current cart
+      const cartResponse = await fetch('/cart.js');
+      const cart = await cartResponse.json();
+      
+      // Find protection item
+      const protectionItem = cart.items.find(item => 
+        (item.properties && item.properties._shipping_protection === 'true') ||
+        item.variant_id.toString() === protectionVariantId.toString()
+      );
+
+      if (protectionItem) {
+        await fetch('/cart/change.js', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: protectionItem.key,
+            quantity: 0
+          })
+        });
+
+        // Trigger cart update events
+        document.dispatchEvent(new CustomEvent('cart:updated'));
+        
+        // Refresh page or update cart UI
+        if (typeof window.location !== 'undefined') {
+          window.location.reload();
+        }
+      }
+    } catch (error) {
+      console.error('Error removing protection from cart:', error);
+    }
+  }
+
+  // Handle protection toggle
+  function handleProtectionToggle() {
+    isProtectionSelected = !isProtectionSelected;
+    
+    if (isProtectionSelected) {
+      addProtectionToCart();
+    } else {
+      removeProtectionFromCart();
+    }
+    
+    updateWidgetDisplay();
+  }
+
+  // Update widget display based on selection state
+  function updateWidgetDisplay() {
+    const widget = container.querySelector('.protection-widget-content');
+    if (!widget) return;
+    
+    const toggleInput = widget.querySelector('.protection-toggle');
+    const description = widget.querySelector('.protection-description');
+    const slider = widget.querySelector('.toggle-slider');
+    const toggleButton = widget.querySelector('.toggle-button');
+    
+    if (toggleInput) toggleInput.checked = isProtectionSelected;
+    
+    // Update description
+    if (description) {
+      description.textContent = isProtectionSelected 
+        ? widgetData.description 
+        : (widgetData.disabledDescription || widgetData.description);
+      
+      // Update description color
+      const colorStates = widgetData.colorStates || {};
+      description.style.color = isProtectionSelected 
+        ? (colorStates.enableDescColor || '#282828')
+        : (colorStates.disabledDescColor || '#282828');
+    }
+
+    // Update slider for switch
+    if (slider) {
+      const colorStates = widgetData.colorStates || {};
+      slider.style.backgroundColor = isProtectionSelected 
+        ? (colorStates.optInActionColor || '#cc62c7')
+        : (colorStates.optOutActionColor || '#e7e7e7');
+    }
+
+    // Update toggle button position for switch
+    if (toggleButton) {
+      toggleButton.style.left = isProtectionSelected ? '23px' : '3px';
+    }
+  }
+
+  // Render the widget
+  function renderWidget() {
+    if (!widgetData) return;
+
+    const colorStates = widgetData.colorStates || {};
+    const showIcon = widgetData.selectedVisiblityOptions?.includes('show');
+    const useSwitch = widgetData.selectedButtonOptions?.includes('switch');
+    const protectionPrice = calculateProtectionPrice();
+
+    const widgetHTML = `
+      <div class="protection-widget-content" style="
+        border: ${widgetData.widgetBorderSize ? `${widgetData.widgetBorderSize}px solid ${colorStates.borderColor || '#e7e7e7'}` : 'none'};
+        border-radius: ${widgetData.widgetCornerRadius || 0}px;
+        background-color: ${colorStates.backgroundColor || '#ffffff'};
+        padding: ${widgetData.widgetVerticalPadding || 16}px ${widgetData.widgetHorizontalPadding || 16}px;
+        margin: 16px 0;
+        font-family: inherit;
+      ">
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+          ${showIcon ? `
+            <div style="flex-shrink: 0;">
+              <img 
+                src="${widgetData.imageUrl}" 
+                alt="${widgetData.title}"
+                style="
+                  width: ${widgetData.iconSize || 40}px;
+                  height: ${widgetData.iconSize || 40}px;
+                  border-radius: ${widgetData.iconCornerRadius || 0}px;
+                  object-fit: cover;
+                "
+                loading="lazy"
+                onerror="this.style.display='none'"
+              />
+            </div>
+          ` : ''}
+          
+          <div style="flex: 1;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <h4 style="
+                margin: 0; 
+                color: ${colorStates.titleColor || '#000000'};
+                font-size: 16px;
+                font-weight: 600;
+                line-height: 1.3;
+              ">
+                ${widgetData.title}
+              </h4>
+              
+              <div style="display: flex; align-items: center; gap: 8px; white-space: nowrap;">
+                <span style="
+                  font-size: 14px; 
+                  font-weight: 600;
+                  color: ${colorStates.titleColor || '#000000'};
+                ">
+                  ₹${protectionPrice}
+                </span>
+                
+                ${useSwitch ? `
+                  <label style="
+                    position: relative; 
+                    display: inline-block; 
+                    width: 44px; 
+                    height: 24px;
+                    cursor: pointer;
+                  ">
+                    <input
+                      type="checkbox"
+                      class="protection-toggle"
+                      style="opacity: 0; width: 0; height: 0;"
+                    />
+                    <span class="toggle-slider" style="
+                      position: absolute;
+                      cursor: pointer;
+                      top: 0;
+                      left: 0;
+                      right: 0;
+                      bottom: 0;
+                      background-color: ${colorStates.optOutActionColor || '#e7e7e7'};
+                      border-radius: 24px;
+                      transition: all 0.3s ease;
+                    ">
+                      <span class="toggle-button" style="
+                        position: absolute;
+                        content: '';
+                        height: 18px;
+                        width: 18px;
+                        left: 3px;
+                        bottom: 3px;
+                        background-color: white;
+                        border-radius: 50%;
+                        transition: all 0.3s ease;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                      "></span>
+                    </span>
+                  </label>
+                ` : `
+                  <input
+                    type="checkbox"
+                    class="protection-toggle"
+                    style="
+                      width: 18px; 
+                      height: 18px;
+                      cursor: pointer;
+                      accent-color: ${colorStates.optInActionColor || '#cc62c7'};
+                    "
+                  />
+                `}
+              </div>
+            </div>
+            
+            <p class="protection-description" style="
+              margin: 0; 
+              font-size: 14px; 
+              line-height: 1.4;
+              color: ${colorStates.enableDescColor || '#282828'};
+            ">
+              ${widgetData.description}
+            </p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    container.innerHTML = widgetHTML;
+
+    // Add event listener
+    const toggleInput = container.querySelector('.protection-toggle');
+    if (toggleInput) {
+      toggleInput.addEventListener('change', handleProtectionToggle);
+    }
+
+    // Check if protection is already in cart
+    checkExistingProtection();
+  }
+
+  // Check if protection is already in cart and update UI
+  async function checkExistingProtection() {
+    try {
+      const cartResponse = await fetch('/cart.js');
+      const cart = await cartResponse.json();
+      
+      const hasProtection = cart.items.some(item => 
+        (item.properties && item.properties._shipping_protection === 'true') ||
+        (protectionVariantId && item.variant_id.toString() === protectionVariantId.toString())
+      );
+
+      if (hasProtection) {
+        isProtectionSelected = true;
+        updateWidgetDisplay();
+      }
+    } catch (error) {
+      console.error('Error checking existing protection:', error);
+    }
+  }
+
+  // Initialize widget
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fetchWidgetData);
+  } else {
+    fetchWidgetData();
+  }
+
+  // Listen for cart updates to refresh widget state
+  document.addEventListener('cart:updated', checkExistingProtection);
+  
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Shipping Protection",
+  "target": "section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Widget Settings"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_widget",
+      "label": "Show protection widget",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "custom_css",
+      "label": "Custom CSS classes",
+      "info": "Add custom CSS classes for styling"
+    }
+  ]
+}
+{% endschema %}

@@ -23,6 +23,8 @@ export default function App() {
           Home
         </Link>
         <Link to="/app/protectionWidget">Protection widget</Link>
+        <Link to="/app/orders">Orders</Link>
+
       </NavMenu>
       <Outlet />
     </AppProvider>

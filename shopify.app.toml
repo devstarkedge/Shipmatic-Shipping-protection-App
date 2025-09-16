@@ -1,10 +1,10 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "c190f5a3ad11171a5f6140b73cad5be7"
-name = "Shipmatic"
-application_url = "https://il-academy-short-publishers.trycloudflare.com"
+client_id = "de621c8c41ba70a62f1d5a3a188fca4e"
+name = "shipment"
+application_url = "https://coupled-punch-changed-wolf.trycloudflare.com"
 embedded = true
-handle = "shipmatic-1"
+handle = "shipment-11"
 
 [build]
 include_config_on_deploy = true
@@ -26,7 +26,11 @@ api_version = "2025-07"
 scopes = "read_products,write_products,read_publications,write_publications"
 
 [auth]
-redirect_urls = ["https://il-academy-short-publishers.trycloudflare.com/auth/callback", "https://il-academy-short-publishers.trycloudflare.com/auth/shopify/callback", "https://il-academy-short-publishers.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://coupled-punch-changed-wolf.trycloudflare.com/auth/callback", "https://coupled-punch-changed-wolf.trycloudflare.com/auth/shopify/callback", "https://coupled-punch-changed-wolf.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false
+[app_proxy]
+url = "https://coupled-punch-changed-wolf.trycloudflare.com/app"
+subpath = "shipment"
+prefix = "apps"
