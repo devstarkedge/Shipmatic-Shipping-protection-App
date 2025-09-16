@@ -15,7 +15,7 @@ import {
   ColorPicker,
   Modal,
 } from "@shopify/polaris";
-import { ExportIcon, PlusCircleIcon } from "@shopify/polaris-icons";
+import { PlusCircleIcon } from "@shopify/polaris-icons";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import styles from "./_index/styles.module.css";
 import AutocompleteMultiSelect from "../components/AutocompleteMultiSelect";

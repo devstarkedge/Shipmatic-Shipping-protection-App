@@ -2,7 +2,7 @@
 
 client_id = "de621c8c41ba70a62f1d5a3a188fca4e"
 name = "shipment"
-application_url = "https://coupled-punch-changed-wolf.trycloudflare.com"
+application_url = "https://examinations-theoretical-primary-connectors.trycloudflare.com"
 embedded = true
 handle = "shipment-11"
 
@@ -23,14 +23,14 @@ api_version = "2025-07"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "read_products,write_products,read_publications,write_publications"
+scopes = "read_products,write_products,read_publications,write_publications,read_orders,write_orders,read_customers"
 
 [auth]
-redirect_urls = ["https://coupled-punch-changed-wolf.trycloudflare.com/auth/callback", "https://coupled-punch-changed-wolf.trycloudflare.com/auth/shopify/callback", "https://coupled-punch-changed-wolf.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://examinations-theoretical-primary-connectors.trycloudflare.com/auth/callback", "https://examinations-theoretical-primary-connectors.trycloudflare.com/auth/shopify/callback", "https://examinations-theoretical-primary-connectors.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false
 [app_proxy]
-url = "https://coupled-punch-changed-wolf.trycloudflare.com/app"
+url = "https://examinations-theoretical-primary-connectors.trycloudflare.com/app"
 subpath = "shipment"
 prefix = "apps"

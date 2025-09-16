@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   Button,
   Popover,
@@ -7,9 +7,7 @@ import {
   OptionList,
 } from "@shopify/polaris";
 import { CalendarIcon } from "@shopify/polaris-icons";
-
 import styles from "../../app/routes/_index/styles.module.css";
-
 
 const predefinedRangesDefault = [
   { label: "Today", days: 0 },
@@ -32,89 +30,126 @@ export default function DateRangePicker({
   predefinedRanges = predefinedRangesDefault,
   onApply = () => {},
 }) {
+  // Popover and selection states
   const [popoverActive, setPopoverActive] = useState(false);
   const [selected, setSelected] = useState(
     initialRange.label.toLowerCase().replace(/ /g, "_")
   );
   const [selectedRange, setSelectedRange] = useState(initialRange);
+
+  // Date range states
   const [startDate, setStartDate] = useState(
     initialRange.days !== null ? getDateDaysAgo(initialRange.days) : new Date()
   );
   const [endDate, setEndDate] = useState(new Date());
 
+  // Calendar month/year state for DatePicker
+  const [date, setDate] = useState({
+    month: startDate.getMonth(),
+    year: startDate.getFullYear(),
+  });
+
+  // Temporary states for changes before applying
+  const [tempSelected, setTempSelected] = useState(selected);
+  const [tempSelectedRange, setTempSelectedRange] = useState(selectedRange);
+  const [tempStartDate, setTempStartDate] = useState(startDate);
+  const [tempEndDate, setTempEndDate] = useState(endDate);
+  const [tempDate, setTempDate] = useState(date);
+
+  // Popover toggle
   const togglePopoverActive = useCallback(() => {
+    if (!popoverActive) {
+      // Initialize temp states when opening popover
+      setTempSelected(selected);
+      setTempSelectedRange(selectedRange);
+      setTempStartDate(startDate);
+      setTempEndDate(endDate);
+      setTempDate(date);
+    }
     setPopoverActive((active) => !active);
-  }, []);
+  }, [popoverActive, selected, selectedRange, startDate, endDate, date]);
+
   const closePopover = useCallback(() => setPopoverActive(false), []);
 
+  // Predefined ranges options
   const options = predefinedRanges.map((range) => ({
     value: range.label.toLowerCase().replace(/ /g, "_"),
     label: range.label,
   }));
 
+  // Handle predefined range selection
   const handleRangeChange = (selectedValues) => {
     const value = selectedValues[0];
-    setSelected(value);
+    setTempSelected(value);
     const range = predefinedRanges.find(
       (r) => r.label.toLowerCase().replace(/ /g, "_") === value
     );
-    setSelectedRange(range);
+    setTempSelectedRange(range);
+
     if (range.days !== null) {
-      setStartDate(getDateDaysAgo(range.days));
-      setEndDate(new Date());
+      const start = getDateDaysAgo(range.days);
+      setTempStartDate(start);
+      setTempEndDate(new Date());
+      setTempDate({ month: start.getMonth(), year: start.getFullYear() });
     }
   };
 
-  const handleStartDateChange = (date) => {
-    if (date > endDate) {
-      // Prevent startDate being after endDate
-      return;
-    }
-    setStartDate(date);
-    setSelectedRange(predefinedRanges[6]); // Custom
-    setSelected("custom");
+  // Manual start/end date input handlers
+  const handleStartDateChange = (dateValue) => {
+    const dateObj = new Date(dateValue);
+    if (dateObj > tempEndDate) return;
+    setTempStartDate(dateObj);
+    setTempSelected("custom");
+    setTempSelectedRange(predefinedRanges[6]);
+    setTempDate({ month: dateObj.getMonth(), year: dateObj.getFullYear() });
   };
 
-  const handleEndDateChange = (date) => {
-    if (date < startDate) {
-      // Prevent endDate being before startDate
-      return;
-    }
-    setEndDate(date);
-    setSelectedRange(predefinedRanges[6]); // Custom
-    setSelected("custom");
+  const handleEndDateChange = (dateValue) => {
+    const dateObj = new Date(dateValue);
+    if (dateObj < tempStartDate) return;
+    setTempEndDate(dateObj);
+    setTempSelected("custom");
+    setTempSelectedRange(predefinedRanges[6]);
+    setTempDate({ month: dateObj.getMonth(), year: dateObj.getFullYear() });
   };
 
+  // DatePicker range selection handler
   const handleDatePickerChange = (range) => {
-    if (range.start > range.end) {
-      // Invalid range, ignore
-      return;
-    }
-    setStartDate(range.start);
-    setEndDate(range.end);
-    setSelectedRange(predefinedRanges[6]);
-    setSelected("custom");
+    if (range.start > range.end) return;
+    setTempStartDate(range.start);
+    setTempEndDate(range.end);
+    setTempSelected("custom");
+    setTempSelectedRange(predefinedRanges[6]);
+    setTempDate({ month: range.start.getMonth(), year: range.start.getFullYear() });
   };
 
+  // Apply & Cancel buttons
   const handleApply = () => {
-    onApply({ startDate, endDate, selectedRange });
+    setSelected(tempSelected);
+    setSelectedRange(tempSelectedRange);
+    setStartDate(tempStartDate);
+    setEndDate(tempEndDate);
+    setDate(tempDate);
+    onApply({ startDate: tempStartDate, endDate: tempEndDate, selectedRange: tempSelectedRange });
     closePopover();
   };
 
   const handleCancel = () => {
-    if (selectedRange.days !== null) {
-      setStartDate(getDateDaysAgo(selectedRange.days));
-      setEndDate(new Date());
-    }
+    // Discard changes and close popover
     closePopover();
   };
 
-  const activator = React.useMemo(() => {
-    return React.cloneElement(
-      <Button icon={CalendarIcon} size="slim" textAlign="center">
+  // Polaris DatePicker month navigation
+  const handleMonthChange = useCallback((month, year) => {
+    setTempDate({ month, year });
+  }, []);
+
+  // Popover activator button
+  const activator = useMemo(() => {
+    return (
+      <Button icon={CalendarIcon} size="slim" textAlign="center" onClick={togglePopoverActive}>
         {selectedRange.label}
-      </Button>,
-      { onClick: togglePopoverActive }
+      </Button>
     );
   }, [selectedRange.label, togglePopoverActive]);
 
@@ -132,40 +167,41 @@ export default function DateRangePicker({
             title="Select Range"
             onChange={handleRangeChange}
             options={options}
-            selected={[selected]}
+            selected={[tempSelected]}
           />
         </div>
+
         <div className={styles.datePickerContainer}>
           <div className={styles.dateInputsContainer}>
             <TextField
               label="Start date"
               type="date"
-              value={startDate.toISOString().slice(0, 10)}
-              onChange={(value) => handleStartDateChange(new Date(value))}
+              value={tempStartDate.toISOString().slice(0, 10)}
+              onChange={handleStartDateChange}
             />
             <span>→</span>
             <TextField
               label="End date"
               type="date"
-              value={endDate.toISOString().slice(0, 10)}
-              onChange={(value) => handleEndDateChange(new Date(value))}
+              value={tempEndDate.toISOString().slice(0, 10)}
+              onChange={handleEndDateChange}
             />
           </div>
 
           <div className={styles.datepicker}>
             <DatePicker
-              month={startDate.getMonth()}
-              year={startDate.getFullYear()}
+              month={tempDate.month}
+              year={tempDate.year}
               onChange={handleDatePickerChange}
-              selected={{ start: startDate, end: endDate }}
+              onMonthChange={handleMonthChange}
+              selected={{ start: tempStartDate, end: tempEndDate }}
               multiMonth
               allowRange
               disableDatesAfter={new Date()}
               disableDatesBefore={new Date(2000, 0, 1)}
-              from={startDate}
-              to={endDate}
             />
           </div>
+
           <div className={styles.popoverButtons}>
             <Button onClick={handleCancel} plain>
               Cancel
