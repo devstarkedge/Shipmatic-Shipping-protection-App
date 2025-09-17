@@ -2,7 +2,7 @@
 
 client_id = "de621c8c41ba70a62f1d5a3a188fca4e"
 name = "shipment"
-application_url = "https://examinations-theoretical-primary-connectors.trycloudflare.com"
+application_url = "https://swimming-kept-females-photographer.trycloudflare.com"
 embedded = true
 handle = "shipment-11"
 
@@ -26,11 +26,11 @@ api_version = "2025-07"
 scopes = "read_products,write_products,read_publications,write_publications,read_orders,write_orders,read_customers"
 
 [auth]
-redirect_urls = ["https://examinations-theoretical-primary-connectors.trycloudflare.com/auth/callback", "https://examinations-theoretical-primary-connectors.trycloudflare.com/auth/shopify/callback", "https://examinations-theoretical-primary-connectors.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://swimming-kept-females-photographer.trycloudflare.com/auth/callback", "https://swimming-kept-females-photographer.trycloudflare.com/auth/shopify/callback", "https://swimming-kept-females-photographer.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false
 [app_proxy]
-url = "https://examinations-theoretical-primary-connectors.trycloudflare.com/app"
+url = "https://swimming-kept-females-photographer.trycloudflare.com/app"
 subpath = "shipment"
 prefix = "apps"

@@ -1,6 +1,7 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
+
 import { json } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import { useLoaderData, useNavigate, useNavigation } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -17,6 +18,9 @@ import {
   Checkbox,
   RadioButton,
   Link,
+  EmptyState,
+  Spinner,
+  Scrollable
 } from "@shopify/polaris";
 import DateRangePicker from "../components/DateRangePicker";
 import styles from "./_index/styles.module.css";
@@ -30,12 +34,32 @@ import {
 
 import { authenticate } from "../shopify.server";
 
+const fulfillmentStatusLabels = {
+  fulfilled: "Fulfilled",
+  partially_fulfilled: "Partially fulfilled",
+  unfulfilled: "Unfulfilled",
+  scheduled: "Scheduled",
+  on_hold: "On hold",
+};
+
 export const loader = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
+  const url = new URL(request.url);
+  const startDateParam = url.searchParams.get("startDate");
+  const endDateParam = url.searchParams.get("endDate");
+
+  const now = new Date();
+  const defaultEndDate = now.toISOString().split("T")[0]; 
+  const defaultStartDate = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0]; 
+
+  const startDate = startDateParam || defaultStartDate;
+  const endDate = endDateParam || defaultEndDate;
 
   const query = `
-    query getOrders($first: Int!) {
-      orders(first: $first, sortKey: CREATED_AT, reverse: true) {
+    query getOrders($query: String!) {
+      orders(first: 250, sortKey: CREATED_AT, reverse: true, query: $query) {
         edges {
           node {
             id
@@ -51,7 +75,7 @@ export const loader = async ({ request }) => {
             customer {
               email
             }
-            
+
             lineItems(first: 20) {
               edges {
                 node {
@@ -72,9 +96,13 @@ export const loader = async ({ request }) => {
     }
   `;
 
-  const variables = { first: 50 };
+  const variables = {
+    query: `created_at:>='${startDate}' AND created_at:<='${endDate}'`,
+  };
+
   const response = await admin.graphql(query, { variables });
   const data = await response.json();
+  console.log("GraphQL response data:", data);
 
   // Only return orders that have BOTH "Shipping Protections" + another product
   const filteredOrders = data.data.orders.edges
@@ -86,7 +114,9 @@ export const loader = async ({ request }) => {
       return hasShippingProtection && hasOtherProduct;
     });
 
-  return json({ orders: filteredOrders });
+  return json({
+    orders: filteredOrders,
+  });
 };
 
 const predefinedRanges = [
@@ -99,14 +129,6 @@ const predefinedRanges = [
   { label: "Custom", days: null },
 ];
 
-const fulfillmentStatusOptions = [
-  { label: "Fulfilled", value: "fulfilled", count: 5 },
-  { label: "Partially fulfilled", value: "partially_fulfilled", count: 0 },
-  { label: "Unfulfilled", value: "unfulfilled", count: 2 },
-  { label: "Scheduled", value: "scheduled", count: 0 },
-  { label: "On hold", value: "on_hold", count: 0 },
-];
-
 const sortOptions = [
   { label: "Order number", value: "order_number" },
   { label: "Protection fee", value: "protection_fee" },
@@ -115,23 +137,97 @@ const sortOptions = [
 
 export default function OrdersPage() {
   const { orders } = useLoaderData();
+  const navigate = useNavigate();
+  const navigation = useNavigation();
 
-  const handleApply = ({ startDate, endDate, selectedRange }) => {
-    console.log("Applied date range:", { startDate, endDate, selectedRange });
-  };
-
-  const fulfillmentDisplay = (status) =>
-    status?.replaceAll("_", " ").toLowerCase() || "Unfulfilled";
-
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedFulfillmentStatuses, setSelectedFulfillmentStatuses] =
+    useState([]);
   const [fulfillmentPopoverActive, setFulfillmentPopoverActive] =
     useState(false);
   const [sortPopoverActive, setSortPopoverActive] = useState(false);
-
-  const [selectedFulfillmentStatuses, setSelectedFulfillmentStatuses] =
-    useState([]);
   const [selectedSortOption, setSelectedSortOption] = useState("order_number");
-  const [sortDirection, setSortDirection] = useState("ascending");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [sortDirection, setSortDirection] = useState("descending");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Use useEffect to get currentFirst from window.location.search safely on client side
+  const [pageSize, setPageSize] = useState(2);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      const currentFirst = url.searchParams.get("first")
+        ? parseInt(url.searchParams.get("first"))
+        : 2;
+      setPageSize(currentFirst);
+    }
+  }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedFulfillmentStatuses]);
+
+  const handleApply = ({ startDate, endDate, selectedRange }) => {
+    console.log("Applied date range:", { startDate, endDate, selectedRange });
+    // Update URL with new date range params to trigger loader refetch
+    const params = new URLSearchParams(window.location.search);
+    params.set("startDate", startDate.toISOString().slice(0, 10));
+    params.set("endDate", endDate.toISOString().slice(0, 10));
+    navigate(`?${params.toString()}`, { replace: true });
+  };
+
+  const fulfillmentDisplay = (status) =>
+    status?.replace(/_/g, " ").toLowerCase() || "Unfulfilled";
+
+  // Declare filteredOrders once here
+  const filteredOrders = orders.filter((order) => {
+    const searchLower = searchQuery.toLowerCase();
+    const orderNameMatch = order.name.toLowerCase().includes(searchLower);
+    const emailMatch = order.customer?.email
+      ?.toLowerCase()
+      .includes(searchLower);
+    if (searchQuery && !(orderNameMatch || emailMatch)) {
+      return false;
+    }
+
+    // Normalize statuses to lowercase when filtering
+    const orderStatus =
+      order.displayFulfillmentStatus?.toLowerCase() || "unfulfilled";
+
+    if (
+      selectedFulfillmentStatuses.length > 0 &&
+      !selectedFulfillmentStatuses.includes(orderStatus)
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+
+  let fulfillmentStatusCounts = {};
+  if (filteredOrders) {
+    fulfillmentStatusCounts = filteredOrders.reduce((acc, order) => {
+      const statusKey =
+        order.displayFulfillmentStatus?.toLowerCase() || "unfulfilled";
+      if (fulfillmentStatusLabels.hasOwnProperty(statusKey)) {
+        acc[statusKey] = (acc[statusKey] || 0) + 1;
+      }
+      return acc;
+    }, {});
+  }
+
+  // Build fulfillmentStatusOptions dynamically with counts
+  const fulfillmentStatusOptions = Object.entries(fulfillmentStatusLabels).map(
+    ([value, label]) => {
+      const count = filteredOrders.filter(
+        (order) =>
+          (order.displayFulfillmentStatus?.toLowerCase() || "unfulfilled") ===
+          value,
+      ).length;
+
+      return { value, label, count };
+    },
+  );
 
   const toggleFulfillmentPopoverActive = useCallback(
     () => setFulfillmentPopoverActive((active) => !active),
@@ -162,27 +258,6 @@ export default function OrdersPage() {
     (value) => setSortDirection(value),
     [],
   );
-
-  // Filter and sort orders based on searchQuery, selectedFulfillmentStatuses, selectedSortOption, and sortDirection
-  const filteredOrders = orders.filter((order) => {
-    // Filter by search query (order name or email)
-    const searchLower = searchQuery.toLowerCase();
-    const orderNameMatch = order.name.toLowerCase().includes(searchLower);
-    const emailMatch = order.customer?.email?.toLowerCase().includes(searchLower);
-    if (searchQuery && !(orderNameMatch || emailMatch)) {
-      return false;
-    }
-
-    // Filter by fulfillment status if any selected
-    if (
-      selectedFulfillmentStatuses.length > 0 &&
-      !selectedFulfillmentStatuses.includes(order.displayFulfillmentStatus)
-    ) {
-      return false;
-    }
-
-    return true;
-  });
 
   // Sorting function helpers
   const getProtectionFee = (order) => {
@@ -219,7 +294,12 @@ export default function OrdersPage() {
     }
   });
 
-  const rows = sortedOrders.map((order) => {
+  // Pagination: slice sortedOrders for current page
+  const startIndex = (currentPage - 1) * pageSize;
+  const pagedOrders = sortedOrders.slice(startIndex, startIndex + pageSize);
+  const totalPages = Math.ceil(sortedOrders.length / pageSize);
+
+  const rows = pagedOrders.map((order) => {
     // Find the price of the "Shipping Protections" product in line items
     const protectionItem = order.lineItems.edges.find(
       (li) => li.node.title === "Shipping Protections",
@@ -358,19 +438,9 @@ export default function OrdersPage() {
                 </InlineGrid>
               </Card>
 
-              <Card padding="0">
-                {/* <div
-                  style={{ display: "flex", gap: "5px", paddingBottom: "15px" }}
-                >
-                  <Button variant="tertiary">All ({orders.length})</Button>
-                  <Button variant="tertiary">Protected (1)</Button>
-                </div>
-
-                <Divider /> */}
-
-                <div
-                  className={styles.filters}
-                >
+              <Card padding="0" >
+                
+                <div className={styles.filters}>
                   <TextField
                     label="Tagged with"
                     fullWidth
@@ -517,30 +587,53 @@ export default function OrdersPage() {
                   </Popover>
                 </div>
 
-                <DataTable
-                  columnContentTypes={[
-                    "text",
-                    "text",
-                    "text",
-                    "text",
-                    "text",
-                    "text",
-                    "text",
-                    "text",
-                  ]}
-                  headings={[
-                    "Order No.",
-                    "Email",
-                    "Protection fee",
-                    "Order paid",
-                    "Protection status",
-                    "Fulfillment status",
-                    "Date",
-                    "Action",
-                  ]}
-                  rows={rows}
-                  verticalAlignment="middle"
-                />
+                {navigation.state === "loading" ? (
+                  <div style={{ padding: "20px", textAlign: "center" }}>
+                    <Spinner accessibilityLabel="Loading orders" size="large" />
+                    <Text>Loading orders...</Text>
+                  </div>
+                ) : sortedOrders.length === 0 ? (
+                  <EmptyState
+                    heading="No orders found"
+                    image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+                  >
+                    <p>
+                      No orders match the current filters. Try adjusting your
+                      search or date range.
+                    </p>
+                  </EmptyState>
+                ) : (
+                  <DataTable
+                    columnContentTypes={[
+                      "text",
+                      "text",
+                      "text",
+                      "text",
+                      "text",
+                      "text",
+                      "text",
+                      "text",
+                    ]}
+                    headings={[
+                      "Order No.",
+                      "Email",
+                      "Protection fee",
+                      "Order paid",
+                      "Protection status",
+                      "Fulfillment status",
+                      "Date",
+                      "Action",
+                    ]}
+                    rows={rows}
+                    verticalAlignment="middle"
+                    pagination={{
+                      hasNext: currentPage * pageSize < sortedOrders.length,
+                      hasPrevious: currentPage > 1,
+                      onNext: () => setCurrentPage(currentPage + 1),
+                      onPrevious: () => setCurrentPage(currentPage - 1),
+                    }}
+                  />
+                )}
               </Card>
             </BlockStack>
           </Layout.Section>
