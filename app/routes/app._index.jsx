@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useState } from "react";
 import { useFetcher } from "@remix-run/react";
 import {
   Page,
@@ -6,323 +6,178 @@ import {
   Text,
   Card,
   Button,
+  Popover,
   BlockStack,
-  Box,
-  List,
-  Link,
   InlineStack,
+  ActionList, 
 } from "@shopify/polaris";
-import { TitleBar, useAppBridge } from "@shopify/app-bridge-react";
+import { TitleBar } from "@shopify/app-bridge-react";
+import { MenuHorizontalIcon } from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
+import DateRangePicker from "../components/DateRangePicker";
 
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
-
   return null;
 };
 
-export const action = async ({ request }) => {
-  const { admin } = await authenticate.admin(request);
-  const color = ["Red", "Orange", "Yellow", "Green"][
-    Math.floor(Math.random() * 4)
-  ];
-  const response = await admin.graphql(
-    `#graphql
-      mutation populateProduct($product: ProductCreateInput!) {
-        productCreate(product: $product) {
-          product {
-            id
-            title
-            handle
-            status
-            variants(first: 10) {
-              edges {
-                node {
-                  id
-                  price
-                  barcode
-                  createdAt
-                }
-              }
-            }
-          }
-        }
-      }`,
-    {
-      variables: {
-        product: {
-          title: `${color} Snowboard`,
-        },
-      },
-    },
-  );
-  const responseJson = await response.json();
-  const product = responseJson.data.productCreate.product;
-  const variantId = product.variants.edges[0].node.id;
-  const variantResponse = await admin.graphql(
-    `#graphql
-    mutation shopifyRemixTemplateUpdateVariant($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
-      productVariantsBulkUpdate(productId: $productId, variants: $variants) {
-        productVariants {
-          id
-          price
-          barcode
-          createdAt
-        }
-      }
-    }`,
-    {
-      variables: {
-        productId: product.id,
-        variants: [{ id: variantId, price: "100.00" }],
-      },
-    },
-  );
-  const variantResponseJson = await variantResponse.json();
-
-  return {
-    product: responseJson.data.productCreate.product,
-    variant: variantResponseJson.data.productVariantsBulkUpdate.productVariants,
-  };
-};
-
 export default function Index() {
-  const fetcher = useFetcher();
-  const shopify = useAppBridge();
-  const isLoading =
-    ["loading", "submitting"].includes(fetcher.state) &&
-    fetcher.formMethod === "POST";
-  const productId = fetcher.data?.product?.id.replace(
-    "gid://shopify/Product/",
-    "",
-  );
+  const [rating, setRating] = useState(0);
 
-  useEffect(() => {
-    if (productId) {
-      shopify.toast.show("Product created");
-    }
-  }, [productId, shopify]);
-  const generateProduct = () => fetcher.submit({}, { method: "POST" });
+
+  const [active, setActive] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const [disabled, setDisabled] = useState(false);
+
+  const handleRating = (value) => {
+    setRating(value);
+  };
+
+  const toggleActive = () => setActive((prev) => !prev);
 
   return (
     <Page>
-      {/* <TitleBar title="Remix app template">
-        <button variant="primary" onClick={generateProduct}>
-          Generate a product
-        </button>
-      </TitleBar> */}
-      <BlockStack gap="500">
-        <Layout>
-          <Layout.Section>
-            <Card>
-              <BlockStack gap="500">
-                <BlockStack gap="200">
-                  <Text as="h2" variant="headingMd">
-                    Congrats on creating a new Shopify app 🎉
-                  </Text>
-                  <Text variant="bodyMd" as="p">
-                    This embedded app template uses{" "}
-                    <Link
-                      url="https://shopify.dev/docs/apps/tools/app-bridge"
-                      target="_blank"
-                      removeUnderline
-                    >
-                      App Bridge
-                    </Link>{" "}
-                    interface examples like an{" "}
-                    <Link url="/app/additional" removeUnderline>
-                      additional page in the app nav
-                    </Link>
-                    , as well as an{" "}
-                    <Link
-                      url="https://shopify.dev/docs/api/admin-graphql"
-                      target="_blank"
-                      removeUnderline
-                    >
-                      Admin GraphQL
-                    </Link>{" "}
-                    mutation demo, to provide a starting point for app
-                    development.
-                  </Text>
-                </BlockStack>
-                <BlockStack gap="200">
-                  <Text as="h3" variant="headingMd">
-                    Get started with products
-                  </Text>
-                  <Text as="p" variant="bodyMd">
-                    Generate a product with GraphQL and get the JSON output for
-                    that product. Learn more about the{" "}
-                    <Link
-                      url="https://shopify.dev/docs/api/admin-graphql/latest/mutations/productCreate"
-                      target="_blank"
-                      removeUnderline
-                    >
-                      productCreate
-                    </Link>{" "}
-                    mutation in our API references.
-                  </Text>
-                </BlockStack>
-                <InlineStack gap="300">
-                  <Button loading={isLoading} onClick={generateProduct}>
-                    Generate a product
-                  </Button>
-                  {fetcher.data?.product && (
-                    <Button
-                      url={`shopify:admin/products/${productId}`}
-                      target="_blank"
-                      variant="plain"
-                    >
-                      View product
-                    </Button>
-                  )}
-                </InlineStack>
-                {fetcher.data?.product && (
-                  <>
-                    <Text as="h3" variant="headingMd">
-                      {" "}
-                      productCreate mutation
-                    </Text>
-                    <Box
-                      padding="400"
-                      background="bg-surface-active"
-                      borderWidth="025"
-                      borderRadius="200"
-                      borderColor="border"
-                      overflowX="scroll"
-                    >
-                      <pre style={{ margin: 0 }}>
-                        <code>
-                          {JSON.stringify(fetcher.data.product, null, 2)}
-                        </code>
-                      </pre>
-                    </Box>
-                    <Text as="h3" variant="headingMd">
-                      {" "}
-                      productVariantsBulkUpdate mutation
-                    </Text>
-                    <Box
-                      padding="400"
-                      background="bg-surface-active"
-                      borderWidth="025"
-                      borderRadius="200"
-                      borderColor="border"
-                      overflowX="scroll"
-                    >
-                      <pre style={{ margin: 0 }}>
-                        <code>
-                          {JSON.stringify(fetcher.data.variant, null, 2)}
-                        </code>
-                      </pre>
-                    </Box>
-                  </>
-                )}
-              </BlockStack>
-            </Card>
-          </Layout.Section>
-          <Layout.Section variant="oneThird">
-            <BlockStack gap="500">
-              <Card>
-                <BlockStack gap="200">
-                  <Text as="h2" variant="headingMd">
-                    App template specs
-                  </Text>
-                  <BlockStack gap="200">
-                    <InlineStack align="space-between">
-                      <Text as="span" variant="bodyMd">
-                        Framework
-                      </Text>
-                      <Link
-                        url="https://remix.run"
-                        target="_blank"
-                        removeUnderline
+      <Layout>
+        <Layout.Section>
+          <BlockStack gap="400">
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Text as="h2" variant="headingLg">
+                Welcome to Shipmatic 👋
+              </Text>
+              <DateRangePicker />
+            </div>
+
+<Card roundedAbove="sm">
+              <InlineStack gap="400" blockAlign="center" align="space-between">
+                {/* Left side: icon + text + stars */}
+                <InlineStack gap="200" blockAlign="center">
+                  {/* Icon */}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="28"
+                    height="28"
+                    viewBox="0 0 28 28"
+                    fill="none"
+                  >
+                    <rect
+                      opacity="0.33"
+                      width="28"
+                      height="28"
+                      rx="14"
+                      fill="url(#paint0_linear_7_118)"
+                    />
+                    <path
+                      d="M7 13.0793C7 16.4691 9.814 18.2752 11.8734 19.8924C12.6 20.4626 13.3 21 14 21C14.7 21 15.4 20.4633 16.1266 19.8917C18.1867 18.2759 21 16.4691 21 13.08C21 9.69094 17.15 7.2854 14 10.5448C10.85 7.2854 7 9.68955 7 13.0793Z"
+                      fill="white"
+                    />
+                    <defs>
+                      <linearGradient
+                        id="paint0_linear_7_118"
+                        x1="0.933333"
+                        y1="1.49333"
+                        x2="26.88"
+                        y2="26.32"
+                        gradientUnits="userSpaceOnUse"
                       >
-                        Remix
-                      </Link>
-                    </InlineStack>
-                    <InlineStack align="space-between">
-                      <Text as="span" variant="bodyMd">
-                        Database
-                      </Text>
-                      <Link
-                        url="https://www.prisma.io/"
-                        target="_blank"
-                        removeUnderline
+                        <stop stopColor="#CC62C7" />
+                        <stop offset="1" stopColor="#592BA8" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+
+                  {/* Text */}
+                  <Text as="p">
+                    Thanks for using Shipmatic. We’d love it if you could share
+                    your experience with us.
+                  </Text>
+
+                  {/* ⭐ Stars */}
+                  <InlineStack gap="100">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span
+                        key={star}
+                        onClick={() => handleRating(star)}
+                        style={{
+                          cursor: "pointer",
+                          color: rating >= star ? "#FFD700" : "#CCCCCC",
+                          fontSize: "24px",
+                        }}
                       >
-                        Prisma
-                      </Link>
-                    </InlineStack>
-                    <InlineStack align="space-between">
-                      <Text as="span" variant="bodyMd">
-                        Interface
-                      </Text>
-                      <span>
-                        <Link
-                          url="https://polaris.shopify.com"
-                          target="_blank"
-                          removeUnderline
-                        >
-                          Polaris
-                        </Link>
-                        {", "}
-                        <Link
-                          url="https://shopify.dev/docs/apps/tools/app-bridge"
-                          target="_blank"
-                          removeUnderline
-                        >
-                          App Bridge
-                        </Link>
+                        ★
                       </span>
-                    </InlineStack>
-                    <InlineStack align="space-between">
-                      <Text as="span" variant="bodyMd">
-                        API
-                      </Text>
-                      <Link
-                        url="https://shopify.dev/docs/api/admin-graphql"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        GraphQL API
-                      </Link>
-                    </InlineStack>
-                  </BlockStack>
-                </BlockStack>
-              </Card>
-              <Card>
-                <BlockStack gap="200">
-                  <Text as="h2" variant="headingMd">
-                    Next steps
-                  </Text>
-                  <List>
-                    <List.Item>
-                      Build an{" "}
-                      <Link
-                        url="https://shopify.dev/docs/apps/getting-started/build-app-example"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        {" "}
-                        example app
-                      </Link>{" "}
-                      to get started
-                    </List.Item>
-                    <List.Item>
-                      Explore Shopify’s API with{" "}
-                      <Link
-                        url="https://shopify.dev/docs/apps/tools/graphiql-admin-api"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        GraphiQL
-                      </Link>
-                    </List.Item>
-                  </List>
-                </BlockStack>
-              </Card>
-            </BlockStack>
-          </Layout.Section>
-        </Layout>
-      </BlockStack>
+                    ))}
+                  </InlineStack>
+                </InlineStack>
+
+                {/* Right side: "..." menu */}
+               <Popover
+                    active={active}
+                    activator={
+                      <Button
+                        icon={MenuHorizontalIcon}
+                        onClick={toggleActive}
+                        accessibilityLabel="More actions"
+                      />
+                    }
+                    onClose={toggleActive}
+                    autofocusTarget="first-node"
+                  >
+                    <ActionList
+                      items={[
+                        { content: "Hide", onAction: () => setHidden(true) },
+                        { content: "Disable", onAction: () => setDisabled(true) },
+                      ]}
+                    />
+                  </Popover>
+              </InlineStack>
+            </Card>
+
+<Card roundedAbove="sm">
+   <InlineStack gap="400" blockAlign="center" align="space-between">
+    <InlineStack gap="400">
+   <Text as="h2" variant="headingMd">Setup tutorial</Text>
+<Card>
+      <Text as="h2" variant="headingMd">
+        1 / 3 completed
+      </Text>
+    </Card>
+    </InlineStack>
+<InlineStack gap="400">
+     <Popover
+                    active={active}
+                    activator={
+                      <Button
+                        icon={MenuHorizontalIcon}
+                        onClick={toggleActive}
+                        accessibilityLabel="More actions"
+                      />
+                    }
+                    onClose={toggleActive}
+                    autofocusTarget="first-node"
+                  >
+                    <ActionList
+                      items={[
+                        { content: "Test", onAction: () => setHidden(true) },
+                        { content: "Test2", onAction: () => setDisabled(true) },
+                      ]}
+                    />
+                  </Popover>
+
+    </InlineStack>
+
+   </InlineStack>
+</Card>
+
+
+          </BlockStack>
+        </Layout.Section>
+      </Layout>
     </Page>
   );
 }

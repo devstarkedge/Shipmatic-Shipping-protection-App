@@ -20,7 +20,7 @@ import {
   Link,
   EmptyState,
   Spinner,
-  Scrollable
+  Scrollable,
 } from "@shopify/polaris";
 import DateRangePicker from "../components/DateRangePicker";
 import styles from "./_index/styles.module.css";
@@ -49,10 +49,10 @@ export const loader = async ({ request }) => {
   const endDateParam = url.searchParams.get("endDate");
 
   const now = new Date();
-  const defaultEndDate = now.toISOString().split("T")[0]; 
+  const defaultEndDate = now.toISOString().split("T")[0];
   const defaultStartDate = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000)
     .toISOString()
-    .split("T")[0]; 
+    .split("T")[0];
 
   const startDate = startDateParam || defaultStartDate;
   const endDate = endDateParam || defaultEndDate;
@@ -151,14 +151,14 @@ export default function OrdersPage() {
   const [currentPage, setCurrentPage] = useState(1);
 
   // Use useEffect to get currentFirst from window.location.search safely on client side
-  const [pageSize, setPageSize] = useState(2);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       const currentFirst = url.searchParams.get("first")
         ? parseInt(url.searchParams.get("first"))
-        : 2;
+        : 10;
       setPageSize(currentFirst);
     }
   }, []);
@@ -392,7 +392,7 @@ export default function OrdersPage() {
               <Card roundedAbove="sm">
                 <InlineGrid
                   gap="400"
-                  columns={{ xs: 1, sm: 2, md: 3, lg: 3, xl: 3 }}
+                  columns={{ xs: 1, sm: 2, md: 2, lg: 2, xl: 2 }}
                 >
                   <div className={styles.card}>
                     <BlockStack gap="400">
@@ -401,9 +401,9 @@ export default function OrdersPage() {
                       </Text>
 
                       <InlineGrid>
-                        <Text as="h2" variant="headingMd" fontWeight="bold">
-                          8
-                        </Text>
+                      <Text as="h2" variant="headingMd" fontWeight="bold">
+                        {orders.length}
+                      </Text>
                       </InlineGrid>
                     </BlockStack>
                   </div>
@@ -415,14 +415,28 @@ export default function OrdersPage() {
                       </Text>
 
                       <InlineGrid>
-                        <Text as="h2" variant="headingMd" fontWeight="bold">
-                          €20.00 EUR
-                        </Text>
+                  <Text as="h2" variant="headingMd" fontWeight="bold">
+                    {(() => {
+                      if (orders.length === 0) return "N/A";
+                      const totalProtection = orders.reduce((sum, order) => {
+                        const protectionItem = order.lineItems.edges.find(
+                          (li) => li.node.title === "Shipping Protections",
+                        );
+                        const amount = protectionItem
+                          ? parseFloat(protectionItem.node.originalTotalSet.shopMoney.amount)
+                          : 0;
+                        return sum + amount;
+                      }, 0);
+                      const avgProtection = totalProtection / orders.length;
+                      const currencyCode = orders[0].lineItems.edges[0]?.node.originalTotalSet.shopMoney.currencyCode || "";
+                      return `${avgProtection.toFixed(2)} ${currencyCode}`;
+                    })()}
+                  </Text>
                       </InlineGrid>
                     </BlockStack>
                   </div>
 
-                  <div className={styles.card}>
+                  {/* <div className={styles.card}>
                     <BlockStack gap="400">
                       <Text as="h2" variant="headingMd" fontWeight="bold">
                         Orders with protection
@@ -434,12 +448,11 @@ export default function OrdersPage() {
                         </Text>
                       </InlineGrid>
                     </BlockStack>
-                  </div>
+                  </div> */}
                 </InlineGrid>
               </Card>
 
-              <Card padding="0" >
-                
+              <Card padding="0">
                 <div className={styles.filters}>
                   <TextField
                     label="Tagged with"
