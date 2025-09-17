@@ -32,6 +32,15 @@ import {
   CaretDownIcon,
 } from "@shopify/polaris-icons";
 
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+
 import { authenticate } from "../shopify.server";
 
 const fulfillmentStatusLabels = {
@@ -139,6 +148,68 @@ export default function OrdersPage() {
   const { orders } = useLoaderData();
   const navigate = useNavigate();
   const navigation = useNavigation();
+
+  // Prepare data for graphs: aggregate by date (YYYY-MM-DD)
+  const aggregateDataByDate = (startDateParam, endDateParam) => {
+    const dateMap = {};
+
+    orders.forEach((order) => {
+      const date = new Date(order.createdAt).toISOString().slice(0, 10);
+      if (!dateMap[date]) {
+        dateMap[date] = { count: 0, totalProtection: 0, ordersCount: 0 };
+      }
+      const protectionItem = order.lineItems.edges.find(
+        (li) => li.node.title === "Shipping Protections",
+      );
+      const protectionAmount = protectionItem
+        ? parseFloat(protectionItem.node.originalTotalSet.shopMoney.amount)
+        : 0;
+
+      dateMap[date].count += 1;
+      dateMap[date].totalProtection += protectionAmount;
+      dateMap[date].ordersCount += 1;
+    });
+
+    // Use the selected date range or fallback to min/max order dates
+    const startDate = startDateParam
+      ? new Date(startDateParam)
+      : new Date(Object.keys(dateMap).sort()[0]);
+    const endDate = endDateParam
+      ? new Date(endDateParam)
+      : new Date(Object.keys(dateMap).sort().slice(-1)[0]);
+
+    const allDates = [];
+    for (
+      let d = new Date(startDate);
+      d <= endDate;
+      d.setDate(d.getDate() + 1)
+    ) {
+      const isoDate = d.toISOString().slice(0, 10);
+      allDates.push(isoDate);
+      if (!dateMap[isoDate]) {
+        dateMap[isoDate] = { count: 0, totalProtection: 0, ordersCount: 0 };
+      }
+    }
+
+    // Convert to array and calculate average protection
+    return allDates.map((date) => {
+      const data = dateMap[date];
+      return {
+        date,
+        protectedOrders: data.count,
+        avgProtection:
+          data.ordersCount > 0 ? data.totalProtection / data.ordersCount : 0,
+      };
+    });
+  };
+
+  // Get startDate and endDate from URL search params or defaults
+  const url =
+    typeof window !== "undefined" ? new URL(window.location.href) : null;
+  const startDateParam = url ? url.searchParams.get("startDate") : null;
+  const endDateParam = url ? url.searchParams.get("endDate") : null;
+
+  const graphData = aggregateDataByDate(startDateParam, endDateParam);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFulfillmentStatuses, setSelectedFulfillmentStatuses] =
@@ -400,11 +471,36 @@ export default function OrdersPage() {
                         Protected orders
                       </Text>
 
-                      <InlineGrid>
-                      <Text as="h2" variant="headingMd" fontWeight="bold">
-                        {orders.length}
-                      </Text>
-                      </InlineGrid>
+                      <div
+                        style={{
+                          alignItems: "end",
+                          minHeight: "40px",
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Text as="h2" variant="headingMd" fontWeight="bold">
+                          {orders.length}
+                        </Text>
+                        <div style={{ width: 200, height: 40 }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={graphData}>
+                              <XAxis dataKey="date" hide />
+                              <YAxis hide domain={["dataMin", "dataMax"]} />
+                              <Tooltip />
+                              <Area
+                                type="natural"
+                                dataKey="protectedOrders"
+                                stroke="#CC62C7"
+                                fill="#CC62C7"
+                                fillOpacity={0.3}
+                                strokeWidth={2}
+                                dot={false}
+                              />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
                     </BlockStack>
                   </div>
 
@@ -414,25 +510,61 @@ export default function OrdersPage() {
                         Average protection paid
                       </Text>
 
-                      <InlineGrid>
-                  <Text as="h2" variant="headingMd" fontWeight="bold">
-                    {(() => {
-                      if (orders.length === 0) return "N/A";
-                      const totalProtection = orders.reduce((sum, order) => {
-                        const protectionItem = order.lineItems.edges.find(
-                          (li) => li.node.title === "Shipping Protections",
-                        );
-                        const amount = protectionItem
-                          ? parseFloat(protectionItem.node.originalTotalSet.shopMoney.amount)
-                          : 0;
-                        return sum + amount;
-                      }, 0);
-                      const avgProtection = totalProtection / orders.length;
-                      const currencyCode = orders[0].lineItems.edges[0]?.node.originalTotalSet.shopMoney.currencyCode || "";
-                      return `${avgProtection.toFixed(2)} ${currencyCode}`;
-                    })()}
-                  </Text>
-                      </InlineGrid>
+                      <div
+                        style={{
+                          alignItems: "center",
+                          minHeight: "40px",
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Text as="h2" variant="headingMd" fontWeight="bold">
+                          {(() => {
+                            if (orders.length === 0) return "N/A";
+                            const totalProtection = orders.reduce(
+                              (sum, order) => {
+                                const protectionItem =
+                                  order.lineItems.edges.find(
+                                    (li) =>
+                                      li.node.title === "Shipping Protections",
+                                  );
+                                const amount = protectionItem
+                                  ? parseFloat(
+                                      protectionItem.node.originalTotalSet
+                                        .shopMoney.amount,
+                                    )
+                                  : 0;
+                                return sum + amount;
+                              },
+                              0,
+                            );
+                            const avgProtection =
+                              totalProtection / orders.length;
+                            const currencyCode =
+                              orders[0].lineItems.edges[0]?.node
+                                .originalTotalSet.shopMoney.currencyCode || "";
+                            return `${avgProtection.toFixed(2)} ${currencyCode}`;
+                          })()}
+                        </Text>
+                        <div style={{ width: 150, height: 40 }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={graphData}>
+                              <XAxis dataKey="date" hide />
+                              <YAxis hide domain={["dataMin", "dataMax"]} />
+                              <Tooltip />
+                              <Area
+                                type="natural"
+                                dataKey="avgProtection"
+                                stroke="#CC62C7"
+                                fill="#CC62C7"
+                                fillOpacity={0.3}
+                                strokeWidth={2}
+                                dot={false}
+                              />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
                     </BlockStack>
                   </div>
 
