@@ -123,6 +123,7 @@ export default function ClaimPage() {
   const [selectedReasons, setSelectedReasons] = useState({});
   const [notes, setNotes] = useState({});
   const [proofFiles, setProofFiles] = useState({});
+  const [proofFilesBase64, setProofFilesBase64] = useState({});
   const [step, setStep] = useState(1);
   const [selectedMethod, setSelectedMethod] = useState("");
 
@@ -142,10 +143,23 @@ export default function ClaimPage() {
   };
 
   const handleProofFileChange = (itemId, files) => {
-    setProofFiles((prev) => ({ ...prev, [itemId]: files }));
+    const newFiles = [...(proofFiles[itemId] || []), ...files];
+    setProofFiles((prev) => ({ ...prev, [itemId]: newFiles }));
+
+    // Convert to base64
+    const base64Promises = files.map(file => new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    }));
+    Promise.all(base64Promises).then(base64s => {
+      setProofFilesBase64((prev) => ({ ...prev, [itemId]: [...(prev[itemId] || []), ...base64s] }));
+    });
   };
 
-  const validSelection = Object.values(selectedItems).some((qty) => qty > 0);
+  const hasSelectedItems = Object.values(selectedItems).some((qty) => qty > 0);
+  const allSelectedHaveReasons = Object.entries(selectedItems).every(([itemId, qty]) => qty === 0 || (selectedReasons[itemId] && selectedReasons[itemId].length > 0));
+  const validSelection = hasSelectedItems && allSelectedHaveReasons;
 
   const claimData = Object.entries(selectedItems)
     .filter(([_, qty]) => qty > 0)
@@ -154,7 +168,7 @@ export default function ClaimPage() {
       quantity: qty,
       reasons: selectedReasons[itemId] || [],
       notes: notes[itemId] || "",
-      proofFiles: proofFiles[itemId] || [],
+      proofFiles: proofFilesBase64[itemId] || [],
     }));
 
   return (
@@ -282,7 +296,7 @@ export default function ClaimPage() {
                           }}
                         >
                           <Text variant="bodyMd" fontWeight="semibold">
-                            Reason
+                            Reason *
                           </Text>
                           <AutocompleteMultiSelect
                             options={REASON_OPTIONS}
@@ -360,7 +374,7 @@ export default function ClaimPage() {
                               style={{
                                 width: "48px",
                                 height: "48px",
-                                border: "2px dashed #C4C4C4",
+                                border: "1.5px dashed #B7B7B7",
                                 borderRadius: "8px",
                                 backgroundColor: "transparent",
                                 display: "flex",
@@ -409,15 +423,14 @@ export default function ClaimPage() {
                                         />
                                         <button
                                           onClick={() => {
-                                            const newFiles = (
-                                              proofFiles[item.id] || []
-                                            ).filter(
-                                              (f) => f.name !== file.name,
-                                            );
-                                            handleProofFileChange(
-                                              item.id,
-                                              newFiles,
-                                            );
+                                            const index = proofFiles[item.id].findIndex(f => f.name === file.name);
+                                            if (index !== -1) {
+                                              const newFiles = proofFiles[item.id].filter(f => f.name !== file.name);
+                                              setProofFiles((prev) => ({ ...prev, [item.id]: newFiles }));
+                                              const newBase64 = [...(proofFilesBase64[item.id] || [])];
+                                              newBase64.splice(index, 1);
+                                              setProofFilesBase64((prev) => ({ ...prev, [item.id]: newBase64 }));
+                                            }
                                           }}
                                           style={{
                                             position: "absolute",
