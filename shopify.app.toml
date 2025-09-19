@@ -2,12 +2,11 @@
 
 client_id = "de621c8c41ba70a62f1d5a3a188fca4e"
 name = "shipment"
-application_url = "https://beneficial-impact-surrounding-promised.trycloudflare.com"
+application_url = "https://federal-alien-color-technological.trycloudflare.com"
 embedded = true
 handle = "shipment-11"
 
 [build]
-include_config_on_deploy = true
 automatically_update_urls_on_dev = true
 
 [webhooks]
@@ -26,11 +25,11 @@ api_version = "2025-07"
 scopes = "read_products,write_products,read_publications,write_publications,read_orders,write_orders,read_customers"
 
 [auth]
-redirect_urls = ["https://beneficial-impact-surrounding-promised.trycloudflare.com/auth/callback", "https://beneficial-impact-surrounding-promised.trycloudflare.com/auth/shopify/callback", "https://beneficial-impact-surrounding-promised.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://federal-alien-color-technological.trycloudflare.com/auth/callback", "https://federal-alien-color-technological.trycloudflare.com/auth/shopify/callback", "https://federal-alien-color-technological.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false
 [app_proxy]
-url = "https://beneficial-impact-surrounding-promised.trycloudflare.com/app"
+url = "https://federal-alien-color-technological.trycloudflare.com/app"
 subpath = "shipment"
 prefix = "apps"

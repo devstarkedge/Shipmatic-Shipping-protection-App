@@ -17,11 +17,12 @@ import {
   Popover,
   Checkbox,
   RadioButton,
-  Link,
   EmptyState,
   Spinner,
   Scrollable,
+  Link,
 } from "@shopify/polaris";
+
 import DateRangePicker from "../components/DateRangePicker";
 import styles from "./_index/styles.module.css";
 
@@ -113,7 +114,6 @@ export const loader = async ({ request }) => {
   const data = await response.json();
   console.log("GraphQL response data:", data);
 
-  // Only return orders that have BOTH "Shipping Protections" + another product
   const filteredOrders = data.data.orders.edges
     .map((edge) => edge.node)
     .filter((order) => {
@@ -149,7 +149,6 @@ export default function OrdersPage() {
   const navigate = useNavigate();
   const navigation = useNavigation();
 
-  // Prepare data for graphs: aggregate by date (YYYY-MM-DD)
   const aggregateDataByDate = (startDateParam, endDateParam) => {
     const dateMap = {};
 
@@ -170,7 +169,6 @@ export default function OrdersPage() {
       dateMap[date].ordersCount += 1;
     });
 
-    // Use the selected date range or fallback to min/max order dates
     const startDate = startDateParam
       ? new Date(startDateParam)
       : new Date(Object.keys(dateMap).sort()[0]);
@@ -191,7 +189,6 @@ export default function OrdersPage() {
       }
     }
 
-    // Convert to array and calculate average protection
     return allDates.map((date) => {
       const data = dateMap[date];
       return {
@@ -203,7 +200,6 @@ export default function OrdersPage() {
     });
   };
 
-  // Get startDate and endDate from URL search params or defaults
   const url =
     typeof window !== "undefined" ? new URL(window.location.href) : null;
   const startDateParam = url ? url.searchParams.get("startDate") : null;
@@ -221,7 +217,6 @@ export default function OrdersPage() {
   const [sortDirection, setSortDirection] = useState("descending");
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Use useEffect to get currentFirst from window.location.search safely on client side
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
@@ -240,7 +235,7 @@ export default function OrdersPage() {
 
   const handleApply = ({ startDate, endDate, selectedRange }) => {
     console.log("Applied date range:", { startDate, endDate, selectedRange });
-    // Update URL with new date range params to trigger loader refetch
+
     const params = new URLSearchParams(window.location.search);
     params.set("startDate", startDate.toISOString().slice(0, 10));
     params.set("endDate", endDate.toISOString().slice(0, 10));
@@ -250,7 +245,6 @@ export default function OrdersPage() {
   const fulfillmentDisplay = (status) =>
     status?.replace(/_/g, " ").toLowerCase() || "Unfulfilled";
 
-  // Declare filteredOrders once here
   const filteredOrders = orders.filter((order) => {
     const searchLower = searchQuery.toLowerCase();
     const orderNameMatch = order.name.toLowerCase().includes(searchLower);
@@ -261,7 +255,6 @@ export default function OrdersPage() {
       return false;
     }
 
-    // Normalize statuses to lowercase when filtering
     const orderStatus =
       order.displayFulfillmentStatus?.toLowerCase() || "unfulfilled";
 
@@ -287,7 +280,6 @@ export default function OrdersPage() {
     }, {});
   }
 
-  // Build fulfillmentStatusOptions dynamically with counts
   const fulfillmentStatusOptions = Object.entries(fulfillmentStatusLabels).map(
     ([value, label]) => {
       const count = filteredOrders.filter(
@@ -330,7 +322,6 @@ export default function OrdersPage() {
     [],
   );
 
-  // Sorting function helpers
   const getProtectionFee = (order) => {
     const protectionItem = order.lineItems.edges.find(
       (li) => li.node.title === "Shipping Protections",
@@ -365,13 +356,11 @@ export default function OrdersPage() {
     }
   });
 
-  // Pagination: slice sortedOrders for current page
   const startIndex = (currentPage - 1) * pageSize;
   const pagedOrders = sortedOrders.slice(startIndex, startIndex + pageSize);
   const totalPages = Math.ceil(sortedOrders.length / pageSize);
 
   const rows = pagedOrders.map((order) => {
-    // Find the price of the "Shipping Protections" product in line items
     const protectionItem = order.lineItems.edges.find(
       (li) => li.node.title === "Shipping Protections",
     );
@@ -380,15 +369,22 @@ export default function OrdersPage() {
       : "N/A";
 
     return [
-      <Link
+      <button
         key={order.id}
-        url={`https://admin.shopify.com/orders/${order.id.split("/").pop()}`}
-        external
-        removeUnderline
-        style={{ color: "#CC62C7" }}
+        onClick={() => navigate(`/app/order/${order.id.split("/").pop()}`)}
+        style={{
+          background: "none",
+          border: "none",
+          padding: 0,
+          margin: 0,
+          color: "#CC62C7",
+          cursor: "pointer",
+          textDecoration: "underline",
+          font: "inherit",
+        }}
       >
         {order.name}
-      </Link>,
+      </button>,
 
       order.customer?.email || "N/A",
       protectionPrice,
@@ -425,14 +421,21 @@ export default function OrdersPage() {
       </span>,
 
       new Date(order.createdAt).toLocaleDateString(),
-      <Link
+      <button
         key={`action-${order.id}`}
-        url="#"
-        removeUnderline
-        style={{ color: "#CC62C7", cursor: "pointer" }}
+        onClick={() => navigate(`/app/order/${order.id.split("/").pop()}`)}
+        style={{
+          background: "none",
+          border: "none",
+          padding: 0,
+          margin: 0,
+          color: "#CC62C7",
+          cursor: "pointer",
+          font: "inherit",
+        }}
       >
         File claim
-      </Link>,
+      </button>,
     ];
   });
 

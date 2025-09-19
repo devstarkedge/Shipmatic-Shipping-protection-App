@@ -1,4 +1,4 @@
-import { Link, Outlet, useLoaderData, useRouteError } from "@remix-run/react";
+import { Link, Outlet, useLoaderData, useRouteError, useLocation } from "@remix-run/react";
 import { boundary } from "@shopify/shopify-app-remix/server";
 import { AppProvider } from "@shopify/shopify-app-remix/react";
 import { NavMenu } from "@shopify/app-bridge-react";
@@ -15,6 +15,9 @@ export const loader = async ({ request }) => {
 
 export default function App() {
   const { apiKey } = useLoaderData();
+  const location = useLocation();
+
+  
 
   return (
     <AppProvider isEmbeddedApp apiKey={apiKey}>
@@ -22,16 +25,22 @@ export default function App() {
         <Link to="/app" rel="home">
           Home
         </Link>
-        <Link to="/app/protectionWidget">Protection widget</Link>
-        <Link to="/app/orders">Orders</Link>
-
+        <Link to="/app/protectionWidget" >
+          Protection widget
+        </Link>
+        <Link to="/app/order" >
+          Orders
+        </Link>
+        <Link to="/app/claim" >
+          Claims
+        </Link>
       </NavMenu>
       <Outlet />
     </AppProvider>
   );
 }
 
-// Shopify needs Remix to catch some thrown responses, so that their headers are included in the response.
+
 export function ErrorBoundary() {
   return boundary.error(useRouteError());
 }
