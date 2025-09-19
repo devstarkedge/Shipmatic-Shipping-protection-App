@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { useNavigate, useLoaderData } from "@remix-run/react";
-import { json } from "@remix-run/node";
+import { useNavigate, useLoaderData, useActionData, Form, useSearchParams } from "@remix-run/react";
+import { json, redirect } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
+import prisma from "../db.server";
 import {
   Page,
   Layout,
@@ -14,6 +15,7 @@ import {
   Thumbnail as PolarisThumbnail,
   Button as PolarisButton,
   Divider,
+  Banner,
 } from "@shopify/polaris";
 import AutocompleteMultiSelect from "../components/AutocompleteMultiSelect";
 // import refund from "";
@@ -115,10 +117,55 @@ export async function loader({ request, params }) {
   return json({ order });
 }
 
+export async function action({ request, params }) {
+  const { orderId } = params;
+  const { admin, session } = await authenticate.admin(request);
+
+  const formData = await request.formData();
+  const claimDataStr = formData.get("claimData");
+  const method = formData.get("method");
+
+  if (!claimDataStr || !method) {
+    return json({ error: "Missing claim data or method" }, { status: 400 });
+  }
+
+  const claimData = JSON.parse(claimDataStr);
+
+  try {
+    // Check if a claim for this orderId already exists
+    const existingClaim = await prisma.claim.findFirst({
+      where: { orderId },
+    });
+
+    if (existingClaim) {
+      return redirect(`/app/order/${orderId}?duplicate=true`);
+    }
+
+    await prisma.claim.create({
+      data: {
+        orderId,
+        shop: session.shop,
+        items: claimData,
+        method,
+      },
+    });
+
+    return redirect(`/app/order/${orderId}?success=true`);
+  } catch (error) {
+    console.error("Error saving claim:", error.message || error);
+    console.error("Full error:", error);
+    return json({ error: `Failed to submit claim: ${error.message || 'Unknown error'}` }, { status: 500 });
+  }
+}
+
 export default function ClaimPage() {
   const { order } = useLoaderData();
   console.log("Rendering order items:", order.items);
   const navigate = useNavigate();
+  const actionData = useActionData();
+  const [searchParams] = useSearchParams();
+  const success = searchParams.get("success") === "true";
+  const duplicate = searchParams.get("duplicate") === "true";
   const [selectedItems, setSelectedItems] = useState({});
   const [selectedReasons, setSelectedReasons] = useState({});
   const [notes, setNotes] = useState({});
@@ -192,6 +239,21 @@ export default function ClaimPage() {
               File claim for {order.name}
             </Text>
           </div>
+          {success && (
+            <Banner title="Claim submitted successfully" status="success" onDismiss={() => {}}>
+              <p>Your claim has been submitted.</p>
+            </Banner>
+          )}
+          {duplicate && (
+            <Banner title="Claim already exists" status="warning" onDismiss={() => {}}>
+              <p>A claim for this order already exists.</p>
+            </Banner>
+          )}
+          {actionData?.error && (
+            <Banner title="Error" status="critical" onDismiss={() => {}}>
+              <p>{actionData.error}</p>
+            </Banner>
+          )}
 
           {step === 1 && (
             <Card sectioned>
@@ -622,15 +684,13 @@ export default function ClaimPage() {
                 }}
               >
                 <Button onClick={() => setStep(1)}>Previous</Button>
-                <Button
-                  primary
-                  disabled={!selectedMethod}
-                  onClick={() =>
-                    alert(`Submitted with method: ${selectedMethod} , ${JSON.stringify(claimData)}`)
-                  }
-                >
-                  Submit
-                </Button>
+                <Form method="post">
+                  <input type="hidden" name="claimData" value={JSON.stringify(claimData)} />
+                  <input type="hidden" name="method" value={selectedMethod} />
+                  <button type="submit" disabled={!selectedMethod} style={{ backgroundColor: '#007bff', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '5px', cursor: 'pointer' }}>
+                    Submit
+                  </button>
+                </Form>
               </div>
             </Card>
           )}

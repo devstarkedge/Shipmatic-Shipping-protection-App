@@ -56,3 +56,14 @@ model session {
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
 }
+
+model claim {
+  id        String   @id @default(cuid())
+  orderId   String
+  shop      String
+  items     Json
+  method    String
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

@@ -1,0 +1,6 @@
+- [ ] Add claim model to prisma/schema.prisma
+- [ ] Run prisma generate
+- [ ] Run prisma migrate dev
+- [ ] Add action function to app/routes/app.order.$orderId.jsx
+- [ ] Update submit button to form submission
+- [ ] Handle response in component
