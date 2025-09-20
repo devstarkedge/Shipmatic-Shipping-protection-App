@@ -31,7 +31,7 @@ export default function App() {
         <Link to="/app/order" >
           Orders
         </Link>
-        <Link to="/app/claim" >
+        <Link to="/app/claims" >
           Claims
         </Link>
       </NavMenu>

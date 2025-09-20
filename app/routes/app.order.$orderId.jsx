@@ -131,6 +131,14 @@ export async function action({ request, params }) {
   const claimDataStr = formData.get("claimData");
   const method = formData.get("method");
 
+  function randomNumericString(length) {
+    let result = "";
+    for (let i = 0; i < length; i++) {
+      result += Math.floor(Math.random() * 10);
+    }
+    return result;
+  }
+
   if (!claimDataStr || !method) {
     return json({ error: "Missing claim data or method" }, { status: 400 });
   }
@@ -147,8 +155,19 @@ export async function action({ request, params }) {
       return redirect(`/app/order/${orderId}?duplicate=true`);
     }
 
+    let id;
+    let exists = true;
+
+    while (exists) {
+      id = randomNumericString(10);
+      const existing = await prisma.claim.findUnique({ where: { id } });
+      exists = !!existing;
+    }
+
+
     await prisma.claim.create({
       data: {
+        id,
         orderId,
         shop: session.shop,
         items: claimData,

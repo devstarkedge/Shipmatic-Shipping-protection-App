@@ -58,7 +58,7 @@ model session {
 }
 
 model claim {
-  id        String   @id @default(cuid())
+  id        String     @id
   orderId   String
   shop      String
   items     Json

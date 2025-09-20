@@ -19,8 +19,6 @@ import {
   RadioButton,
   EmptyState,
   Spinner,
-  Scrollable,
-  Link,
 } from "@shopify/polaris";
 
 import DateRangePicker from "../components/DateRangePicker";
@@ -113,7 +111,6 @@ export const loader = async ({ request }) => {
 
   const response = await admin.graphql(query, { variables });
   const data = await response.json();
-  console.log("GraphQL response data:", data);
 
   const filteredOrders = data.data.orders.edges
     .map((edge) => edge.node)
@@ -127,24 +124,28 @@ export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop;
 
+  // Handle case when claim table doesn't exist
+  let existingClaims = [];
+  let claimedOrderIds = new Set();
 
-  const existingClaims = await prisma.claim.findMany({
-    where: {
-      shop: shop,
-    },
-    select: {
-      orderId: true,
-      status: true,
-    },
-  });
+  try {
+    existingClaims = await prisma.claim.findMany({
+      where: { shop },
+      select: { orderId: true, status: true },
+      take: 100, 
+      skip: 0, 
+    });
 
- 
-  const claimedOrderIds = new Set(
-    existingClaims.map((claim) => claim.orderId)
-
-  );
-
-
+    claimedOrderIds = new Set(existingClaims.map((claim) => claim.orderId));
+  } catch (error) {
+    
+    console.warn(
+      "Claim table not found, proceeding without claim data:",
+      error.message,
+    );
+    existingClaims = [];
+    claimedOrderIds = new Set();
+  }
 
   return json({
     orders: filteredOrders,
@@ -202,12 +203,22 @@ export default function OrdersPage() {
     const startDate = startDateParam
       ? new Date(startDateParam)
       : Object.keys(dateMap).length > 0
-        ? new Date(Math.min(new Date(Object.keys(dateMap).sort()[0]), defaultStartDate))
+        ? new Date(
+            Math.min(
+              new Date(Object.keys(dateMap).sort()[0]),
+              defaultStartDate,
+            ),
+          )
         : defaultStartDate;
     const endDate = endDateParam
       ? new Date(endDateParam)
       : Object.keys(dateMap).length > 0
-        ? new Date(Math.max(new Date(Object.keys(dateMap).sort().slice(-1)[0]), defaultEndDate))
+        ? new Date(
+            Math.max(
+              new Date(Object.keys(dateMap).sort().slice(-1)[0]),
+              defaultEndDate,
+            ),
+          )
         : defaultEndDate;
 
     const allDates = [];
@@ -268,8 +279,6 @@ export default function OrdersPage() {
   }, [searchQuery, selectedFulfillmentStatuses]);
 
   const handleApply = ({ startDate, endDate, selectedRange }) => {
-    console.log("Applied date range:", { startDate, endDate, selectedRange });
-
     const params = new URLSearchParams(window.location.search);
     params.set("startDate", startDate.toISOString().slice(0, 10));
     params.set("endDate", endDate.toISOString().slice(0, 10));
@@ -455,7 +464,7 @@ export default function OrdersPage() {
       </span>,
 
       new Date(order.createdAt).toLocaleDateString(),
-      
+
       claimedOrderIds.includes(order.id.split("/").pop()) ? (
         <span
           style={{
@@ -484,9 +493,6 @@ export default function OrdersPage() {
       ),
     ];
   });
-
-
-    console.log(claimedOrderIds);
 
   return (
     <div className={styles.protectionWidget}>
@@ -518,7 +524,7 @@ export default function OrdersPage() {
                   columns={{ xs: 1, sm: 2, md: 2, lg: 2, xl: 2 }}
                 >
                   <div className={styles.card}>
-                    <BlockStack gap="400">
+                    <BlockStack gap="0">
                       <Text as="h2" variant="headingMd" fontWeight="bold">
                         Protected orders
                       </Text>
@@ -557,14 +563,14 @@ export default function OrdersPage() {
                   </div>
 
                   <div className={styles.card}>
-                    <BlockStack gap="400">
+                    <BlockStack gap="0">
                       <Text as="h2" variant="headingMd" fontWeight="bold">
                         Average protection paid
                       </Text>
 
                       <div
                         style={{
-                          alignItems: "center",
+                          alignItems: "end",
                           minHeight: "40px",
                           display: "flex",
                           justifyContent: "space-between",
