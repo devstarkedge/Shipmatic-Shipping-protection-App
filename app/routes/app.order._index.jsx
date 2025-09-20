@@ -43,6 +43,7 @@ import {
 } from "recharts";
 
 import { authenticate } from "../shopify.server";
+import prisma from "../db.server";
 
 const fulfillmentStatusLabels = {
   fulfilled: "Fulfilled",
@@ -123,8 +124,32 @@ export const loader = async ({ request }) => {
       return hasShippingProtection && hasOtherProduct;
     });
 
+  const { session } = await authenticate.admin(request);
+  const shop = session.shop;
+
+
+  const existingClaims = await prisma.claim.findMany({
+    where: {
+      shop: shop,
+    },
+    select: {
+      orderId: true,
+      status: true,
+    },
+  });
+
+ 
+  const claimedOrderIds = new Set(
+    existingClaims.map((claim) => claim.orderId)
+
+  );
+
+
+
   return json({
     orders: filteredOrders,
+    existingClaims: existingClaims,
+    claimedOrderIds: Array.from(claimedOrderIds),
   });
 };
 
@@ -145,7 +170,7 @@ const sortOptions = [
 ];
 
 export default function OrdersPage() {
-  const { orders } = useLoaderData();
+  const { orders, claimedOrderIds } = useLoaderData();
   const navigate = useNavigate();
   const navigation = useNavigation();
 
@@ -169,12 +194,21 @@ export default function OrdersPage() {
       dateMap[date].ordersCount += 1;
     });
 
+    // Use default 60-day range when no URL parameters are provided
+    const now = new Date();
+    const defaultStartDate = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+    const defaultEndDate = new Date();
+
     const startDate = startDateParam
       ? new Date(startDateParam)
-      : new Date(Object.keys(dateMap).sort()[0]);
+      : Object.keys(dateMap).length > 0
+        ? new Date(Math.min(new Date(Object.keys(dateMap).sort()[0]), defaultStartDate))
+        : defaultStartDate;
     const endDate = endDateParam
       ? new Date(endDateParam)
-      : new Date(Object.keys(dateMap).sort().slice(-1)[0]);
+      : Object.keys(dateMap).length > 0
+        ? new Date(Math.max(new Date(Object.keys(dateMap).sort().slice(-1)[0]), defaultEndDate))
+        : defaultEndDate;
 
     const allDates = [];
     for (
@@ -421,23 +455,38 @@ export default function OrdersPage() {
       </span>,
 
       new Date(order.createdAt).toLocaleDateString(),
-      <button
-        key={`action-${order.id}`}
-        onClick={() => navigate(`/app/order/${order.id.split("/").pop()}`)}
-        style={{
-          background: "none",
-          border: "none",
-          padding: 0,
-          margin: 0,
-          color: "#CC62C7",
-          cursor: "pointer",
-          font: "inherit",
-        }}
-      >
-        File claim
-      </button>,
+      
+      claimedOrderIds.includes(order.id.split("/").pop()) ? (
+        <span
+          style={{
+            color: "#666",
+            fontStyle: "italic",
+          }}
+        >
+          Claim filed
+        </span>
+      ) : (
+        <button
+          key={`action-${order.id}`}
+          onClick={() => navigate(`/app/order/${order.id.split("/").pop()}`)}
+          style={{
+            background: "none",
+            border: "none",
+            padding: 0,
+            margin: 0,
+            color: "#CC62C7",
+            cursor: "pointer",
+            font: "inherit",
+          }}
+        >
+          File claim
+        </button>
+      ),
     ];
   });
+
+
+    console.log(claimedOrderIds);
 
   return (
     <div className={styles.protectionWidget}>
