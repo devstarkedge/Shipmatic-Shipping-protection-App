@@ -2,6 +2,7 @@ import { Link, Outlet, useLoaderData, useRouteError, useLocation } from "@remix-
 import { boundary } from "@shopify/shopify-app-remix/server";
 import { AppProvider } from "@shopify/shopify-app-remix/react";
 import { NavMenu } from "@shopify/app-bridge-react";
+import { Frame } from "@shopify/polaris";
 import polarisStyles from "@shopify/polaris/build/esm/styles.css?url";
 import { authenticate } from "../shopify.server";
 
@@ -21,21 +22,23 @@ export default function App() {
 
   return (
     <AppProvider isEmbeddedApp apiKey={apiKey}>
-      <NavMenu>
-        <Link to="/app" rel="home">
-          Home
-        </Link>
-        <Link to="/app/protectionWidget" >
-          Protection widget
-        </Link>
-        <Link to="/app/order" >
-          Orders
-        </Link>
-        <Link to="/app/claims" >
-          Claims
-        </Link>
-      </NavMenu>
-      <Outlet />
+      <Frame>
+        <NavMenu>
+          <Link to="/app" rel="home">
+            Home
+          </Link>
+          <Link to="/app/protectionWidget" >
+            Protection widget
+          </Link>
+          <Link to="/app/order" >
+            Orders
+          </Link>
+          <Link to="/app/claims" >
+            Claims
+          </Link>
+        </NavMenu>
+        <Outlet />
+      </Frame>
     </AppProvider>
   );
 }

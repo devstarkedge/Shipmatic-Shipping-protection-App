@@ -175,7 +175,7 @@ export async function action({ request, params }) {
       },
     });
 
-    return redirect(`/app/order/${orderId}?success=true`);
+    return redirect(`/app/claims?success=true`);
   } catch (error) {
     console.error("Error saving claim:", error.message || error);
     console.error("Full error:", error);

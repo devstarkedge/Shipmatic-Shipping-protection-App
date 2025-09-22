@@ -29,6 +29,7 @@ import {
   CaretUpIcon,
   CaretDownIcon,
 } from "@shopify/polaris-icons";
+import { Toast } from "@shopify/polaris";
 
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
@@ -53,11 +54,15 @@ export const loader = async ({ request }) => {
     const startDate = startDateParam || defaultStartDate;
     const endDate = endDateParam || defaultEndDate;
 
+    // Fix: Ensure end date includes the entire current day
+    const endDateTime = endDateParam ? new Date(endDate) : new Date();
+    endDateTime.setHours(23, 59, 59, 999); // Include the entire day
+
     whereClause = {
       shop: shop,
       createdAt: {
         gte: new Date(startDate),
-        lte: new Date(endDate),
+        lte: endDateTime,
       },
     };
   }
@@ -242,6 +247,9 @@ export default function ClaimsPage() {
   const [currentPage, setCurrentPage] = useState(1);
 
   const [pageSize, setPageSize] = useState(10);
+  const [toastActive, setToastActive] = useState(false);
+  const [toastContent, setToastContent] = useState("");
+  const [toastError, setToastError] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -250,6 +258,14 @@ export default function ClaimsPage() {
         ? parseInt(url.searchParams.get("first"))
         : 10;
       setPageSize(currentFirst);
+
+      // Check for success parameter from claim creation
+      const success = url.searchParams.get("success") === "true";
+      if (success) {
+        setToastContent("Claim submitted successfully!");
+        setToastError(false);
+        setToastActive(true);
+      }
     }
   }, []);
 
@@ -301,7 +317,7 @@ export default function ClaimsPage() {
 
     if (
       selectedSolutions.length > 0 &&
-      !selectedSolutions.includes(claim.method || '')
+      !selectedSolutions.includes(claim.method || "")
     ) {
       return false;
     }
@@ -320,7 +336,7 @@ export default function ClaimsPage() {
   });
 
   const solutionCounts = filteredClaims.reduce((acc, claim) => {
-    const method = claim.method || '';
+    const method = claim.method || "";
     if (method) {
       acc[method] = (acc[method] || 0) + 1;
     }
@@ -483,7 +499,21 @@ export default function ClaimsPage() {
 
       getStatusBadge(claim.status),
 
-      claim.method || "N/A",
+      <span
+        style={{
+          backgroundColor: "#FFF",
+          padding: "2px 8px",
+          borderRadius: "5px",
+          border: "1px solid #EAEAEA",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "fit-content",
+        }}
+      >
+       { claim.method || "N/A"}
+      </span>,
+
       customerEmail,
 
       settlementValue,
@@ -696,14 +726,16 @@ export default function ClaimsPage() {
                           gap: "8px",
                         }}
                       >
-                        {solutionFilterOptions.map(({ label, value, count }) => (
-                          <Checkbox
-                            key={value}
-                            label={`${label} (${count})`}
-                            checked={selectedSolutions.includes(value)}
-                            onChange={() => handleSolutionChange(value)}
-                          />
-                        ))}
+                        {solutionFilterOptions.map(
+                          ({ label, value, count }) => (
+                            <Checkbox
+                              key={value}
+                              label={`${label} (${count})`}
+                              checked={selectedSolutions.includes(value)}
+                              onChange={() => handleSolutionChange(value)}
+                            />
+                          ),
+                        )}
                         <Button
                           plain
                           onClick={() => setSelectedSolutions([])}
@@ -857,6 +889,14 @@ export default function ClaimsPage() {
           </Layout.Section>
         </Layout>
       </Page>
+
+      {toastActive && (
+        <Toast
+          content={toastContent}
+          error={toastError}
+          onDismiss={() => setToastActive(false)}
+        />
+      )}
     </div>
   );
 }
