@@ -36,7 +36,7 @@ export default function App() {
           <Link to="/app/claims" >
             Claims
           </Link>
-          <Link to="/app/settings/protection" >
+          <Link to="/app/settings" >
             Settings
           </Link>
         </NavMenu>

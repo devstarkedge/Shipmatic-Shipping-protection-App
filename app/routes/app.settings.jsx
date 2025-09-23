@@ -2,13 +2,8 @@ import {
   Page,
   Layout,
   BlockStack,
-  Text,
   Card,
-  RadioButton,
-  TextField,
-  Button,
   OptionList,
-  InlineGrid,
 } from "@shopify/polaris";
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate, Outlet } from "@remix-run/react";
@@ -23,20 +18,20 @@ export default function settings() {
     setSelected(selectedValues);
 
     if (selectedValues.includes("protection_setting")) {
-      navigate("/app/settings/protection");
+      navigate("/app/settings");
     }
   }, [navigate]);
 
   useEffect(() => {
     if (selected.includes("protection_setting")) {
-      navigate("/app/settings/protection");
+      navigate("/app/settings");
+    } else if (selected.includes("claim_portal_preference")) {
+      navigate("/app/settings/claimPortal");
     }
   }, [selected, navigate]);
 
   return (
     <Page title="Settings">
-
-      
 
       <Layout>
 
@@ -74,14 +69,14 @@ export default function settings() {
             </BlockStack>
           </Card>
         </Layout.Section>
-        
 
-        
+
+
         <Layout.Section variant="twoThird">
 
 
           <Outlet />
-        
+
         </Layout.Section>
       </Layout>
     </Page>

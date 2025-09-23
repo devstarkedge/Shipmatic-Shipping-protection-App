@@ -80,3 +80,12 @@ model protection_settings {
 
   @@unique([shop])
 }
+
+model claim_portal_settings {
+  id                 String   @id @default(cuid())
+  shop               String   @unique
+  selectedResolution String   @default("refund")
+  days               String   @default("45")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}

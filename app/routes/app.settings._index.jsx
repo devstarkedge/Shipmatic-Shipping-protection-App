@@ -18,7 +18,8 @@ import ProductTypeExclusionModal from "../components/ProductTypeExclusionModal";
 import SkuExclusionModal from "../components/SkuExclusionModal";
 
 export async function loader({ request }) {
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
+  const shop = session.shop;
 
   const response = await admin.graphql(`#graphql
     query {
@@ -50,12 +51,16 @@ export async function loader({ request }) {
     .filter((sku) => sku)
     .filter((sku, index, arr) => arr.indexOf(sku) === index);
 
-  return { productTypes, skus };
+  const settings = await prisma.protection_settings.findUnique({
+    where: { shop },
+  });
+
+  return { productTypes, skus, settings: settings || { fulfillmentRule: "first_item", productSKU: "Insure01", exclusionType: "product_type", exclusionValues: [] } };
 }
 
 export async function action({ request }) {
-  const { admin } = await authenticate.admin(request);
-  const shop = admin.shop;
+  const { admin, session } = await authenticate.admin(request);
+  const shop = session.shop;
 
   const formData = await request.formData();
   const fulfillmentRule = formData.get("fulfillmentRule");
@@ -90,7 +95,7 @@ export async function action({ request }) {
 
 export default function ProtectionSettings() {
   const shopify = useAppBridge();
-  const { productTypes, skus } = useLoaderData();
+  const { productTypes, skus, settings } = useLoaderData();
 
   const formattedProductTypes = productTypes.map((type) => ({
     id: type,
@@ -99,23 +104,23 @@ export default function ProtectionSettings() {
   const formattedSkus = skus.map((sku) => ({ id: sku, label: sku }));
 
   const [originalValues, setOriginalValues] = useState({
-    fulfillmentRule: "first_item",
-    productSKU: "Insure01",
-    exclusionType: "product_type",
+    fulfillmentRule: settings.fulfillmentRule,
+    productSKU: settings.productSKU,
+    exclusionType: settings.exclusionType,
     searchValue: "",
-    excludedProductTypes: [],
-    excludedSkus: [],
+    excludedProductTypes: settings.exclusionValues || [],
+    excludedSkus: settings.exclusionValues || [],
   });
 
-  const [fulfillmentRule, setFulfillmentRule] = useState("first_item");
-  const [productSKU, setProductSKU] = useState("Insure01");
-  const [exclusionType, setExclusionType] = useState("product_type");
+  const [fulfillmentRule, setFulfillmentRule] = useState(settings.fulfillmentRule);
+  const [productSKU, setProductSKU] = useState(settings.productSKU);
+  const [exclusionType, setExclusionType] = useState(settings.exclusionType);
   const [searchValue, setSearchValue] = useState("");
 
   const [isDirty, setIsDirty] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [excludedProductTypes, setExcludedProductTypes] = useState([]);
-  const [excludedSkus, setExcludedSkus] = useState([]);
+  const [excludedProductTypes, setExcludedProductTypes] = useState(settings.exclusionValues || []);
+  const [excludedSkus, setExcludedSkus] = useState(settings.exclusionValues || []);
 
   const fetcher = useFetcher();
 
@@ -190,9 +195,9 @@ export default function ProtectionSettings() {
       exclusionType !== originalValues.exclusionType ||
       searchValue !== originalValues.searchValue ||
       JSON.stringify(excludedProductTypes) !==
-        JSON.stringify(originalValues.excludedProductTypes || []) ||
+      JSON.stringify(originalValues.excludedProductTypes || []) ||
       JSON.stringify(excludedSkus) !==
-        JSON.stringify(originalValues.excludedSkus || []);
+      JSON.stringify(originalValues.excludedSkus || []);
 
     setIsDirty(hasChanges);
 
@@ -253,20 +258,10 @@ export default function ProtectionSettings() {
   return (
     <>
       {/* App Bridge SaveBar */}
-      <SaveBar
-        id="protection-save-bar"
-        open={isDirty}
-        saveAction={{
-          onAction: handleSave,
-          loading: fetcher.state === "submitting",
-          disabled: fetcher.state === "submitting",
-        }}
-        discardAction={{
-          
-          onAction: handleDiscard,
-          disabled: fetcher.state === "submitting",
-        }}
-      />
+      <SaveBar id="protection-save-bar" open={isDirty}>
+        <button variant="primary" onClick={handleSave}></button>
+        <button onClick={handleDiscard}></button>
+      </SaveBar>
 
       <BlockStack gap="600">
         <Card>
