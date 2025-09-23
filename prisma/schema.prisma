@@ -67,3 +67,16 @@ model claim {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model protection_settings {
+  id              String   @id @default(cuid())
+  shop            String
+  fulfillmentRule String   @default("first_item")
+  productSKU      String   @default("Insure01")
+  exclusionType   String   @default("product_type")
+  exclusionValues Json     @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([shop])
+}
