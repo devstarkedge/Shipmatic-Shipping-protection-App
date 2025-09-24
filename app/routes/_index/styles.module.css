@@ -162,3 +162,41 @@
 .filters > :first-child {
   flex-grow: 1;
 }
+
+.outer_setup {
+    padding: 20px;
+    border-radius: 5px;
+    border: 1px solid #E6E6E6;
+    background: #F1F1F1;
+    box-shadow: 0 2px 6px 0 rgba(0, 0, 0, 0.05);
+}
+.outer_st{
+  padding-top: 30px;
+}
+.sale_price_mp{
+    background: linear-gradient(134deg, #faeff9 4.31%, #efeaf7 95.02%);
+        border-radius: 5px;
+    padding: 20px;
+}
+.faq {
+    border-radius: 5px;
+    border: 1px solid #E6E6E6;
+    background: #F1F1F1;
+    box-shadow: 0 2px 6px 0 rgba(0, 0, 0, 0.05);
+    padding: 20px;
+    margin-top: 15px;
+}
+.support_mp {
+    background: linear-gradient(134deg, #faeff9 4.31%, #efeaf7 95.02%);
+    border-radius: 5px;
+    padding: 20px;
+    margin-top: 10px;
+}
+.clm_pt {
+    border-radius: 5px;
+    border: 1px solid #E2E2E2;
+    background: #F1F1F1;
+    box-shadow: 0 2px 6px 0 rgba(0, 0, 0, 0.05);
+    padding: 12px;
+        margin-top: 15px;
+}

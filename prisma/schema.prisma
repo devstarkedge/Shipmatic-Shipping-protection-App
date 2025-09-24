@@ -86,6 +86,9 @@ model claim_portal_settings {
   shop               String   @unique
   selectedResolution String   @default("refund")
   days               String   @default("45")
+  claimReasons       Json     @default("[]")
+  noteVisible        Boolean  @default(true)
+  proofVisible       Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }

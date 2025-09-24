@@ -7,7 +7,7 @@ import {
   Button,
   Icon,
 } from "@shopify/polaris";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useAppBridge, SaveBar } from "@shopify/app-bridge-react";
 import { SearchIcon } from "@shopify/polaris-icons";
 import { useLoaderData, useFetcher } from "@remix-run/react";
@@ -123,8 +123,8 @@ export default function ProtectionSettings() {
   const [excludedSkus, setExcludedSkus] = useState(settings.exclusionValues || []);
 
   const fetcher = useFetcher();
+  const saveBarShownRef = useRef(false);
 
-  // Save handler
   const handleSave = useCallback(() => {
     const exclusionValues =
       exclusionType === "product_type" ? excludedProductTypes : excludedSkus;
@@ -135,6 +135,7 @@ export default function ProtectionSettings() {
     formData.append("exclusionValues", JSON.stringify(exclusionValues));
 
     fetcher.submit(formData, { method: "post" });
+    saveBarShownRef.current = false;
   }, [
     fulfillmentRule,
     productSKU,
@@ -144,7 +145,6 @@ export default function ProtectionSettings() {
     fetcher,
   ]);
 
-  // Discard handler
   const handleDiscard = useCallback(() => {
     console.log("discard");
     setFulfillmentRule(originalValues.fulfillmentRule);
@@ -155,9 +155,9 @@ export default function ProtectionSettings() {
     setExcludedSkus(originalValues.excludedSkus || []);
     setIsDirty(false);
     shopify.saveBar?.hide("protection-save-bar");
+    saveBarShownRef.current = false;
   }, [originalValues, shopify]);
 
-  // Handle fetcher response
   useEffect(() => {
     if (fetcher.data) {
       if (fetcher.data.success) {
@@ -171,9 +171,9 @@ export default function ProtectionSettings() {
         });
         setIsDirty(false);
         shopify.saveBar?.hide("protection-save-bar");
+        saveBarShownRef.current = false;
       } else {
         console.error("Save failed:", fetcher.data.error);
-        // Optionally show error message
       }
     }
   }, [
@@ -187,7 +187,6 @@ export default function ProtectionSettings() {
     shopify,
   ]);
 
-  // Detect unsaved changes
   useEffect(() => {
     const hasChanges =
       fulfillmentRule !== originalValues.fulfillmentRule ||
@@ -201,11 +200,12 @@ export default function ProtectionSettings() {
 
     setIsDirty(hasChanges);
 
-    // Show/hide App Bridge SaveBar
-    if (hasChanges) {
+    if (hasChanges && !saveBarShownRef.current) {
       shopify.saveBar?.show("protection-save-bar");
-    } else {
+      saveBarShownRef.current = true;
+    } else if (!hasChanges) {
       shopify.saveBar?.hide("protection-save-bar");
+      saveBarShownRef.current = false;
     }
   }, [
     fulfillmentRule,
@@ -218,7 +218,6 @@ export default function ProtectionSettings() {
     shopify,
   ]);
 
-  // Modal handlers
   const handleBrowseClick = useCallback(() => {
     setIsModalOpen(true);
   }, []);
@@ -230,7 +229,6 @@ export default function ProtectionSettings() {
   const handleAddProductTypes = useCallback(
     (selectedTypes) => {
       setExcludedProductTypes(selectedTypes);
-      // Update search value to show selected types
       const typeLabels = selectedTypes.map((typeId) => {
         const typeObj = formattedProductTypes.find(
           (type) => type.id === typeId,
@@ -245,7 +243,6 @@ export default function ProtectionSettings() {
   const handleAddSkus = useCallback(
     (selectedSkus) => {
       setExcludedSkus(selectedSkus);
-      // Update search value to show selected SKUs
       const skuLabels = selectedSkus.map((skuId) => {
         const skuObj = formattedSkus.find((sku) => sku.id === skuId);
         return skuObj ? skuObj.label : skuId;

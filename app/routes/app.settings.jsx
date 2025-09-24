@@ -4,6 +4,7 @@ import {
   BlockStack,
   Card,
   OptionList,
+  Scrollable
 } from "@shopify/polaris";
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate, Outlet } from "@remix-run/react";
@@ -54,14 +55,7 @@ export default function settings() {
                     label: "Notification",
                     value: "notification",
                   },
-                  {
-                    label: "Language preference",
-                    value: "language_preference",
-                  },
-                  {
-                    label: "Feedback",
-                    value: "feedback",
-                  },
+                 
                 ]}
                 selected={selected}
                 onChange={handleOptionChange}
@@ -74,8 +68,12 @@ export default function settings() {
 
         <Layout.Section variant="twoThird">
 
+          <Scrollable  style={{ height: '90vh', padding: "20px, 0px" }}>
+            <Outlet />
 
-          <Outlet />
+          </Scrollable>
+
+
 
         </Layout.Section>
       </Layout>
