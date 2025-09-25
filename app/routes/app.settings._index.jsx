@@ -275,7 +275,7 @@ export default function ProtectionSettings() {
 
             <BlockStack gap="100">
               <RadioButton
-                label="When the first order item is fulfilled"
+                label="When any of the order item is fulfilled"
                 checked={fulfillmentRule === "first_item"}
                 id="first_item"
                 name="fulfillment_rule"

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useLoaderData, useFetcher } from "@remix-run/react";
 import {
     BlockStack,
@@ -119,6 +119,8 @@ export default function ClaimPortal() {
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [reasonToDelete, setReasonToDelete] = useState(null);
     const [saveKey, setSaveKey] = useState(0);
+    const popoverRef = useRef(null);
+    const [draggedIndex, setDraggedIndex] = useState(null);
 
     useEffect(() => {
         if (!isDirty && !isSubmitting && !fetcher.state) {
@@ -145,7 +147,7 @@ export default function ClaimPortal() {
 
         setIsDirty(hasChanges);
 
-   
+
 
         if (hasChanges) {
             shopify.saveBar?.show("claim-portal-save-bar");
@@ -214,44 +216,57 @@ export default function ClaimPortal() {
         shopify.saveBar?.hide("claim-portal-save-bar");
     }, [baselineSettings, settings, shopify]);
 
- 
-    // const handleDragEnd = useCallback((result) => {
-    //     if (!result.destination) return;
+    useEffect(() => {
+        if (openDropdownId) {
+            const handleClickOutside = (event) => {
+                if (popoverRef.current && !popoverRef.current.contains(event.target)) {
+                    setOpenDropdownId(null);
+                }
+            };
+            document.addEventListener('click', handleClickOutside);
+            return () => {
+                document.removeEventListener('click', handleClickOutside);
+            };
+        }
+    }, [openDropdownId]);
 
-    //     const items = Array.from(claimReasons);
-    //     const [reorderedItem] = items.splice(result.source.index, 1);
-    //     items.splice(result.destination.index, 0, reorderedItem);
+    const handleDragEnd = useCallback((result) => {
+        if (!result.destination) return;
 
-    //     // Update order property
-    //     const updatedItems = items.map((item, index) => ({
-    //         ...item,
-    //         order: index + 1
-    //     }));
+        const items = Array.from(claimReasons);
+        const [reorderedItem] = items.splice(result.source.index, 1);
+        items.splice(result.destination.index, 0, reorderedItem);
 
-    //     setClaimReasons(updatedItems);
-    //     setIsDirty(true);
-    //     shopify.saveBar?.show("claim-portal-save-bar");
-    // }, [claimReasons, shopify]);
+        // Update order property
+        const updatedItems = items.map((item, index) => ({
+            ...item,
+            order: index + 1
+        }));
 
-    // const handleAddReason = useCallback(() => {
-    //     const newId = Date.now().toString();
-    //     const newReason = {
-    //         id: newId,
-    //         name: 'New reason',
-    //         order: claimReasons.length + 1
-    //     };
-    //     setClaimReasons([...claimReasons, newReason]);
-    //     setIsDirty(true);
-    //     shopify.saveBar?.show("claim-portal-save-bar");
-    // }, [claimReasons, shopify]);
+        setClaimReasons(updatedItems);
+        setIsDirty(true);
+        shopify.saveBar?.show("claim-portal-save-bar");
+    }, [claimReasons, shopify]);
 
-    // const handleReasonChange = useCallback((id, newName) => {
-    //     setClaimReasons(claimReasons.map(reason =>
-    //         reason.id === id ? { ...reason, name: newName } : reason
-    //     ));
-    //     setIsDirty(true);
-    //     shopify.saveBar?.show("claim-portal-save-bar");
-    // }, [claimReasons, shopify]);
+    const handleAddReason = useCallback(() => {
+        const newId = Date.now().toString();
+        const newReason = {
+            id: newId,
+            name: 'New reason',
+            order: claimReasons.length + 1
+        };
+        setClaimReasons([...claimReasons, newReason]);
+        setIsDirty(true);
+        shopify.saveBar?.show("claim-portal-save-bar");
+    }, [claimReasons, shopify]);
+
+    const handleReasonChange = useCallback((id, newName) => {
+        setClaimReasons(claimReasons.map(reason =>
+            reason.id === id ? { ...reason, name: newName } : reason
+        ));
+        setIsDirty(true);
+        shopify.saveBar?.show("claim-portal-save-bar");
+    }, [claimReasons, shopify]);
 
     // Modal handlers
     const handleOpenModal = useCallback((reason = null) => {
@@ -382,34 +397,7 @@ export default function ClaimPortal() {
                     </BlockStack>
                 </Card>
 
-                <Card>
-                    <BlockStack gap="400">
-                        <BlockStack gap="100">
-                            <Text as="h2" variant="headingMd">
-                                Information collection
-                            </Text>
-                            <Text as="p" tone="subdued">
-                                Decide which fields will be required or optional for all claims.
-                            </Text>
-                        </BlockStack>
 
-                        <BlockStack gap="0">
-
-                            <Checkbox
-                                label="Note"
-                                checked={noteField === 'required'}
-                                onChange={(checked) => setNoteField(checked ? 'required' : 'optional')}
-                            />
-
-                            <Checkbox
-                                label="Proof"
-                                checked={proofField === 'required'}
-                                onChange={(checked) => setProofField(checked ? 'required' : 'optional')}
-                            />
-
-                        </BlockStack>
-                    </BlockStack>
-                </Card>
 
                 <Card>
                     <BlockStack gap="400">
@@ -460,6 +448,22 @@ export default function ClaimPortal() {
                                 .map((reason, index) => (
                                     <div
                                         key={reason.id}
+                                        draggable
+                                        onDragStart={() => setDraggedIndex(index)}
+                                        onDragOver={(e) => e.preventDefault()}
+                                        onDrop={() => {
+                                            if (draggedIndex !== null && draggedIndex !== index) {
+                                                const newReasons = [...claimReasons];
+                                                const [removed] = newReasons.splice(draggedIndex, 1);
+                                                newReasons.splice(index, 0, removed);
+                                                const updated = newReasons.map((r, i) => ({ ...r, order: i + 1 }));
+                                                setClaimReasons(updated);
+                                                setIsDirty(true);
+                                                shopify.saveBar?.show("claim-portal-save-bar");
+                                            }
+                                            setDraggedIndex(null);
+                                        }}
+                                        onDragEnd={() => setDraggedIndex(null)}
                                         style={{
                                             display: "flex",
                                             alignItems: "center",
@@ -496,6 +500,7 @@ export default function ClaimPortal() {
                                                 </div>
                                             </div>
                                             <div
+                                                ref={popoverRef}
                                                 style={{
                                                     position: "absolute",
                                                     top: "100%",
@@ -556,13 +561,46 @@ export default function ClaimPortal() {
                                 ))}
                         </BlockStack>
 
-                        <Button
-                            onClick={() => handleOpenModal()}
-                            icon={PlusIcon}
-                            variant="plain"
-                        >
-                            Add new
-                        </Button>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <Button
+                                onClick={() => handleOpenModal()}
+                                icon={PlusIcon}
+                                fullWidth={false}
+                            >
+                                Add new
+                            </Button>
+                        </div>
+
+                    </BlockStack>
+                </Card>
+
+
+                <Card>
+                    <BlockStack gap="400">
+                        <BlockStack gap="100">
+                            <Text as="h2" variant="headingMd">
+                                Information collection
+                            </Text>
+                            <Text as="p" tone="subdued">
+                                Decide which fields will be required or optional for all claims.
+                            </Text>
+                        </BlockStack>
+
+                        <BlockStack gap="0">
+
+                            <Checkbox
+                                label="Note"
+                                checked={noteField === 'required'}
+                                onChange={(checked) => setNoteField(checked ? 'required' : 'optional')}
+                            />
+
+                            <Checkbox
+                                label="Proof"
+                                checked={proofField === 'required'}
+                                onChange={(checked) => setProofField(checked ? 'required' : 'optional')}
+                            />
+
+                        </BlockStack>
                     </BlockStack>
                 </Card>
             </BlockStack>

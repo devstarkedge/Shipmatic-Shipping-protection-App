@@ -28,12 +28,7 @@ import {
 import AutocompleteMultiSelect from "../components/AutocompleteMultiSelect";
 import { ArrowLeftIcon, UploadIcon } from "@shopify/polaris-icons";
 
-const REASON_OPTIONS = [
-  { label: "Damaged", value: "damaged" },
-  { label: "Wrong item", value: "wrong_item" },
-  { label: "Missing item", value: "missing_item" },
-  { label: "Other", value: "other" },
-];
+
 
 export async function loader({ request, params }) {
   const { orderId } = params;
@@ -135,7 +130,21 @@ export async function loader({ request, params }) {
     }
   }
 
-  return json({ order, settings, isExpired });
+  const defaultReasons = [
+    { label: "Damaged", value: "damaged" },
+    { label: "Wrong item", value: "wrong_item" },
+    { label: "Missing item", value: "missing_item" },
+    { label: "Other", value: "other" },
+  ];
+
+  const reasonOptions = settings?.claimReasons && settings.claimReasons.length > 0
+    ? settings.claimReasons.map(reason => ({
+        label: reason.name,
+        value: reason.name.toLowerCase().replace(/\s+/g, '_')
+      }))
+    : defaultReasons;
+
+  return json({ order, settings, isExpired, reasonOptions });
 }
 
 export async function action({ request, params }) {
@@ -213,7 +222,7 @@ export async function action({ request, params }) {
 }
 
 export default function ClaimPage() {
-  const { order, settings } = useLoaderData();
+  const { order, settings, isExpired, reasonOptions } = useLoaderData();
   console.log("Rendering order items:", order.items);
   const navigate = useNavigate();
   const actionData = useActionData();
@@ -446,7 +455,7 @@ export default function ClaimPage() {
                               Reason *
                             </Text>
                             <AutocompleteMultiSelect
-                              options={REASON_OPTIONS}
+                              options={reasonOptions}
                               placeholder="Select reason"
                               selectedOptions={selectedReasons[item.id] || []}
                               onSelect={(selected) =>
