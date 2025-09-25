@@ -40,8 +40,8 @@ export async function loader({ request }) {
             selectedResolution: settings?.selectedResolution || 'refund',
             days: settings?.days || '45',
             claimReasons: finalClaimReasons,
-            noteVisible: settings?.noteVisible !== undefined ? settings.noteVisible : true,
-            proofVisible: settings?.proofVisible !== undefined ? settings.proofVisible : true
+            noteField: settings?.noteField || 'optional',
+            proofField: settings?.proofField || 'optional'
         }
     };
 }
@@ -53,15 +53,15 @@ export async function action({ request }) {
     const selectedResolution = formData.get("selectedResolution");
     const days = formData.get("days");
     const claimReasons = formData.get("claimReasons");
-    const noteVisible = formData.get("noteVisible") === 'true';
-    const proofVisible = formData.get("proofVisible") === 'true';
+    const noteField = formData.get("noteField");
+    const proofField = formData.get("proofField");
 
 
     const updateData = {
         selectedResolution,
         days,
-        noteVisible,
-        proofVisible,
+        noteField,
+        proofField,
     };
 
     if (claimReasons) {
@@ -79,7 +79,7 @@ export async function action({ request }) {
         await prisma.claim_portal_settings.upsert({
             where: { shop },
             update: updateData,
-            create: { shop, selectedResolution, days, noteVisible, proofVisible },
+            create: { shop, selectedResolution, days, noteField, proofField },
         });
         console.log("Database updated successfully");
         return { success: true };
@@ -97,16 +97,16 @@ export default function ClaimPortal() {
     const [selectedResolution, setSelectedResolution] = useState(settings.selectedResolution);
     const [days, setDays] = useState(settings.days);
     const [claimReasons, setClaimReasons] = useState(settings.claimReasons || []);
-    const [noteVisible, setNoteVisible] = useState(settings.noteVisible);
-    const [proofVisible, setProofVisible] = useState(settings.proofVisible);
+    const [noteField, setNoteField] = useState(settings.noteField);
+    const [proofField, setProofField] = useState(settings.proofField);
     const [isDirty, setIsDirty] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [lastSavedData, setLastSavedData] = useState(null);
     const [baselineSettings, setBaselineSettings] = useState({
         selectedResolution: settings.selectedResolution,
         days: settings.days,
-        noteVisible: settings.noteVisible,
-        proofVisible: settings.proofVisible
+        noteField: settings.noteField,
+        proofField: settings.proofField
     });
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -125,13 +125,13 @@ export default function ClaimPortal() {
             setSelectedResolution(settings.selectedResolution);
             setDays(settings.days);
             setClaimReasons(settings.claimReasons || []);
-            setNoteVisible(settings.noteVisible);
-            setProofVisible(settings.proofVisible);
+            setNoteField(settings.noteField);
+            setProofField(settings.proofField);
             setBaselineSettings({
                 selectedResolution: settings.selectedResolution,
                 days: settings.days,
-                noteVisible: settings.noteVisible,
-                proofVisible: settings.proofVisible
+                noteField: settings.noteField,
+                proofField: settings.proofField
             });
         }
     }, [settings, isDirty, isSubmitting, fetcher.state]);
@@ -140,8 +140,8 @@ export default function ClaimPortal() {
         const hasChanges =
             selectedResolution !== baselineSettings.selectedResolution ||
             days !== baselineSettings.days ||
-            noteVisible !== baselineSettings.noteVisible ||
-            proofVisible !== baselineSettings.proofVisible;
+            noteField !== baselineSettings.noteField ||
+            proofField !== baselineSettings.proofField;
 
         setIsDirty(hasChanges);
 
@@ -152,7 +152,7 @@ export default function ClaimPortal() {
         } else {
             shopify.saveBar?.hide("claim-portal-save-bar");
         }
-    }, [selectedResolution, days, noteVisible, proofVisible, baselineSettings, shopify]);
+    }, [selectedResolution, days, noteField, proofField, baselineSettings, shopify]);
 
     const handleSave = useCallback(() => {
         if (!selectedResolution || !days) {
@@ -167,34 +167,34 @@ export default function ClaimPortal() {
         const formData = new FormData();
         formData.append("selectedResolution", selectedResolution);
         formData.append("days", days);
-        formData.append("noteVisible", noteVisible.toString());
-        formData.append("proofVisible", proofVisible.toString());
+        formData.append("noteField", noteField);
+        formData.append("proofField", proofField);
         formData.append("claimReasons", JSON.stringify(sortedClaimReasons));
-        setLastSavedData({ selectedResolution, days, noteVisible, proofVisible, claimReasons: sortedClaimReasons });
+        setLastSavedData({ selectedResolution, days, noteField, proofField, claimReasons: sortedClaimReasons });
         fetcher.submit(formData, { method: "post" });
-    }, [selectedResolution, days, claimReasons, noteVisible, proofVisible, settings.shop, fetcher, shopify]);
+    }, [selectedResolution, days, claimReasons, noteField, proofField, settings.shop, fetcher, shopify]);
 
     useEffect(() => {
         if (fetcher.data?.success && lastSavedData) {
             setSelectedResolution(lastSavedData.selectedResolution);
             setDays(lastSavedData.days);
             setClaimReasons(lastSavedData.claimReasons);
-            setNoteVisible(lastSavedData.noteVisible);
-            setProofVisible(lastSavedData.proofVisible);
+            setNoteField(lastSavedData.noteField);
+            setProofField(lastSavedData.proofField);
             setBaselineSettings({
                 selectedResolution: lastSavedData.selectedResolution,
                 days: lastSavedData.days,
-                noteVisible: lastSavedData.noteVisible,
-                proofVisible: lastSavedData.proofVisible
+                noteField: lastSavedData.noteField,
+                proofField: lastSavedData.proofField
             });
             setIsDirty(false);
             shopify.saveBar?.hide("claim-portal-save-bar");
             setLastSavedData(null);
             setIsSubmitting(false);
-          
+
         } else if (fetcher.data && !fetcher.data.success) {
             setIsSubmitting(false);
-            
+
         }
     }, [fetcher.data, lastSavedData, shopify]);
 
@@ -208,8 +208,8 @@ export default function ClaimPortal() {
         setSelectedResolution(baselineSettings.selectedResolution);
         setDays(baselineSettings.days);
         setClaimReasons(settings.claimReasons || []);
-        setNoteVisible(baselineSettings.noteVisible);
-        setProofVisible(baselineSettings.proofVisible);
+        setNoteField(baselineSettings.noteField);
+        setProofField(baselineSettings.proofField);
         setIsDirty(false);
         shopify.saveBar?.hide("claim-portal-save-bar");
     }, [baselineSettings, settings, shopify]);
@@ -397,14 +397,14 @@ export default function ClaimPortal() {
 
                             <Checkbox
                                 label="Note"
-                                checked={noteVisible}
-                                onChange={setNoteVisible}
+                                checked={noteField === 'required'}
+                                onChange={(checked) => setNoteField(checked ? 'required' : 'optional')}
                             />
 
                             <Checkbox
                                 label="Proof"
-                                checked={proofVisible}
-                                onChange={setProofVisible}
+                                checked={proofField === 'required'}
+                                onChange={(checked) => setProofField(checked ? 'required' : 'optional')}
                             />
 
                         </BlockStack>

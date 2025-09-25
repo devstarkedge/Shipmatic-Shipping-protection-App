@@ -37,7 +37,7 @@ const REASON_OPTIONS = [
 
 export async function loader({ request, params }) {
   const { orderId } = params;
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
 
   let globalOrderId = orderId;
   if (!orderId.startsWith("gid://")) {
@@ -120,7 +120,22 @@ export async function loader({ request, params }) {
     items,
   };
 
-  return json({ order });
+  const settings = await prisma.claim_portal_settings.findUnique({
+    where: { shop: session.shop },
+  });
+
+  const daysUntilExpire = settings?.days ? parseInt(settings.days, 10) : null;
+  let isExpired = false;
+  if (daysUntilExpire !== null) {
+    const createdAt = new Date(order.createdAt);
+    const expirationDate = new Date(createdAt.setDate(createdAt.getDate() + daysUntilExpire));
+    const now = new Date();
+    if (now > expirationDate) {
+      isExpired = true;
+    }
+  }
+
+  return json({ order, settings, isExpired });
 }
 
 export async function action({ request, params }) {
@@ -152,7 +167,18 @@ export async function action({ request, params }) {
     });
 
     if (existingClaim) {
-      return redirect(`/app/order/${orderId}?duplicate=true`);
+      // Check if the existing claim is expired
+      const settings = await prisma.claim_portal_settings.findUnique({
+        where: { shop: session.shop },
+      });
+      const days = settings?.days ? parseInt(settings.days) : 45;
+      const now = new Date();
+      const isExpired = new Date(existingClaim.createdAt.getTime() + days * 24 * 60 * 60 * 1000) < now;
+
+      if (!isExpired) {
+        return redirect(`/app/order/${orderId}?duplicate=true`);
+      }
+      // If expired, proceed to create new claim (old one is expired)
     }
 
     let id;
@@ -187,7 +213,7 @@ export async function action({ request, params }) {
 }
 
 export default function ClaimPage() {
-  const { order } = useLoaderData();
+  const { order, settings } = useLoaderData();
   console.log("Rendering order items:", order.items);
   const navigate = useNavigate();
   const actionData = useActionData();
@@ -243,7 +269,6 @@ export default function ClaimPage() {
     const newFiles = [...(proofFiles[itemId] || []), ...files];
     setProofFiles((prev) => ({ ...prev, [itemId]: newFiles }));
 
-    // Convert to base64
     const base64Promises = files.map(
       (file) =>
         new Promise((resolve) => {
@@ -266,7 +291,17 @@ export default function ClaimPage() {
       qty === 0 ||
       (selectedReasons[itemId] && selectedReasons[itemId].length > 0),
   );
-  const validSelection = hasSelectedItems && allSelectedHaveReasons;
+  const allSelectedHaveNotes = settings?.noteField !== "required" || Object.entries(selectedItems).every(
+    ([itemId, qty]) =>
+      qty === 0 ||
+      (notes[itemId] && notes[itemId].trim().length > 0),
+  );
+  const allSelectedHaveProof = settings?.proofField !== "required" || Object.entries(selectedItems).every(
+    ([itemId, qty]) =>
+      qty === 0 ||
+      (proofFiles[itemId] && proofFiles[itemId].length > 0),
+  );
+  const validSelection = hasSelectedItems && allSelectedHaveReasons && allSelectedHaveNotes && allSelectedHaveProof;
 
   const claimData = Object.entries(selectedItems)
     .filter(([_, qty]) => qty > 0)
@@ -431,7 +466,7 @@ export default function ClaimPage() {
                             }}
                           >
                             <Text variant="bodyMd" fontWeight="semibold">
-                              Notes (optional)
+                              Notes{settings?.noteField === "required" ? " *" : " (optional)"}
                             </Text>
                             <TextField
                               multiline
@@ -442,6 +477,7 @@ export default function ClaimPage() {
                               }
                               placeholder="Add any notes here"
                               showCharacterCount
+                              required={settings?.noteField === "required"}
                             />
                           </div>
 
@@ -453,7 +489,7 @@ export default function ClaimPage() {
                             }}
                           >
                             <Text variant="bodyMd" fontWeight="semibold">
-                              Proof (optional)
+                              Proof{settings?.proofField === "required" ? " *" : " (optional)"}
                             </Text>
                             <div
                               style={{

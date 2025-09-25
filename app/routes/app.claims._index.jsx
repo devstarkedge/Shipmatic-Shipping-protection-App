@@ -54,9 +54,9 @@ export const loader = async ({ request }) => {
     const startDate = startDateParam || defaultStartDate;
     const endDate = endDateParam || defaultEndDate;
 
-    // Fix: Ensure end date includes the entire current day
+   
     const endDateTime = endDateParam ? new Date(endDate) : new Date();
-    endDateTime.setHours(23, 59, 59, 999); // Include the entire day
+    endDateTime.setHours(23, 59, 59, 999); 
 
     whereClause = {
       shop: shop,
@@ -80,13 +80,48 @@ export const loader = async ({ request }) => {
   console.log("Claims found:", claims.length);
   console.log("Claims data:", claims);
 
+  let claimPortalSettings = null;
+  try {
+    claimPortalSettings = await prisma.claim_portal_settings.findUnique({
+      where: { shop },
+    });
+  } catch (error) {
+    console.warn("Claim portal settings not found:", error.message);
+  }
+
+  const days = claimPortalSettings?.days ? parseInt(claimPortalSettings.days) : 45;
+  const now = new Date();
+
+  const expiredClaims = claims.filter(claim =>
+    claim.status !== 'expired' &&
+    new Date(claim.createdAt.getTime() + days * 24 * 60 * 60 * 1000) < now
+  );
+
+  if (expiredClaims.length > 0) {
+    await prisma.claim.updateMany({
+      where: {
+        id: { in: expiredClaims.map(c => c.id) },
+        shop,
+      },
+      data: { status: 'expired' },
+    });
+
+    const updatedClaims = await prisma.claim.findMany({
+      where: whereClause,
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      skip: 0,
+    });
+    claims.length = 0;
+    claims.push(...updatedClaims);
+  }
+
   const orderIds = [...new Set(claims.map((claim) => claim.orderId))];
 
   let ordersMap = {};
   if (orderIds.length > 0) {
     const { admin } = await authenticate.admin(request);
 
-    // Fetch order details from Shopify for the claims
     const query = `
       query getOrders($query: String!) {
         orders(first: 250, sortKey: CREATED_AT, reverse: true, query: $query) {
@@ -287,6 +322,7 @@ export default function ClaimsPage() {
     { value: "approved", label: "Approved" },
     { value: "rejected", label: "Rejected" },
     { value: "settled", label: "Settled" },
+    { value: "expired", label: "Expired" },
   ];
 
   const solutionOptions = [
@@ -440,6 +476,7 @@ export default function ClaimsPage() {
         approved: { color: "#008000", bg: "#E8F5E8" },
         rejected: { color: "#CC62C7", bg: "#FFEAFE" },
         settled: { color: "#000080", bg: "#E8E8FF" },
+        expired: { color: "#FF0000", bg: "#FFE8E8" },
       };
 
       const statusConfig = statusColors[status] || {

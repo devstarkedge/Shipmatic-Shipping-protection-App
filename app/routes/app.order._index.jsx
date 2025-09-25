@@ -124,21 +124,69 @@ export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop;
 
-  // Handle case when claim table doesn't exist
+  
   let existingClaims = [];
   let claimedOrderIds = new Set();
+  let claimPortalSettings = null;
 
   try {
     existingClaims = await prisma.claim.findMany({
       where: { shop },
-      select: { orderId: true, status: true },
-      take: 100, 
-      skip: 0, 
+      select: { id: true, orderId: true, status: true, createdAt: true },
+      take: 100,
+      skip: 0,
     });
+
+    console.log(existingClaims)
+
+    try {
+      claimPortalSettings = await prisma.claim_portal_settings.findUnique({
+        where: { shop },
+      });
+    } catch (error) {
+      console.warn("Claim portal settings not found:", error.message);
+    }
+
+
+    console.log(claimPortalSettings);
+
+
+    const days = claimPortalSettings?.days ? parseInt(claimPortalSettings.days) : 45;
+    const now = new Date();
+
+    console.log(days);
+
+    
+    const expiredClaims = existingClaims.filter(claim =>
+      claim.status !== 'expired' &&
+      new Date(claim.createdAt.getTime() + days * 24 * 60 * 60 * 1000) < now
+    );
+
+
+    if (expiredClaims.length > 0) {
+      await prisma.claim.updateMany({
+        where: {
+          id: { in: expiredClaims.map(c => c.id) },
+          shop,
+        },
+        data: { status: 'expired' },
+      });
+
+  
+      existingClaims = await prisma.claim.findMany({
+        where: { shop },
+        select: { orderId: true, status: true },
+        take: 100,
+        skip: 0,
+      });
+    } else {
+      
+      existingClaims = existingClaims.map(({ id, createdAt, ...rest }) => rest);
+    }
 
     claimedOrderIds = new Set(existingClaims.map((claim) => claim.orderId));
   } catch (error) {
-    
+
     console.warn(
       "Claim table not found, proceeding without claim data:",
       error.message,
@@ -147,10 +195,22 @@ export const loader = async ({ request }) => {
     claimedOrderIds = new Set();
   }
 
+
+  let protectionSettings = null;
+  try {
+    protectionSettings = await prisma.protection_settings.findUnique({
+      where: { shop },
+    });
+  } catch (error) {
+    console.warn("Protection settings not found:", error.message);
+  }
+
   return json({
     orders: filteredOrders,
     existingClaims: existingClaims,
     claimedOrderIds: Array.from(claimedOrderIds),
+    protectionSettings,
+    claimPortalSettings,
   });
 };
 
@@ -171,9 +231,17 @@ const sortOptions = [
 ];
 
 export default function OrdersPage() {
-  const { orders, claimedOrderIds } = useLoaderData();
+  const { orders, claimedOrderIds, existingClaims, protectionSettings, claimPortalSettings } = useLoaderData();
+
+  const days = claimPortalSettings?.days ? parseInt(claimPortalSettings.days) : 45;
+  const now = new Date();
   const navigate = useNavigate();
   const navigation = useNavigation();
+
+ 
+
+  // Create a map of orderId to claim status for easy lookup
+  const claimStatusMap = new Map(existingClaims.map(claim => [claim.orderId, claim.status]));
 
   const aggregateDataByDate = (startDateParam, endDateParam) => {
     const dateMap = {};
@@ -204,21 +272,21 @@ export default function OrdersPage() {
       ? new Date(startDateParam)
       : Object.keys(dateMap).length > 0
         ? new Date(
-            Math.min(
-              new Date(Object.keys(dateMap).sort()[0]),
-              defaultStartDate,
-            ),
-          )
+          Math.min(
+            new Date(Object.keys(dateMap).sort()[0]),
+            defaultStartDate,
+          ),
+        )
         : defaultStartDate;
     const endDate = endDateParam
       ? new Date(endDateParam)
       : Object.keys(dateMap).length > 0
         ? new Date(
-            Math.max(
-              new Date(Object.keys(dateMap).sort().slice(-1)[0]),
-              defaultEndDate,
-            ),
-          )
+          Math.max(
+            new Date(Object.keys(dateMap).sort().slice(-1)[0]),
+            defaultEndDate,
+          ),
+        )
         : defaultEndDate;
 
     const allDates = [];
@@ -285,8 +353,15 @@ export default function OrdersPage() {
     navigate(`?${params.toString()}`, { replace: true });
   };
 
-  const fulfillmentDisplay = (status) =>
-    status?.replace(/_/g, " ").toLowerCase() || "Unfulfilled";
+  const fulfillmentDisplay = (status) => {
+    let display = status?.replace(/_/g, " ").toLowerCase() || "unfulfilled";
+    if (protectionSettings?.fulfillmentRule === "first_item" && status?.toLowerCase() === "partially_fulfilled") {
+      display = "fulfilled";
+    } else if (protectionSettings?.fulfillmentRule === "immediately") {
+      display = "fulfilled";
+    }
+    return display;
+  };
 
   const filteredOrders = orders.filter((order) => {
     const searchLower = searchQuery.toLowerCase();
@@ -465,168 +540,201 @@ export default function OrdersPage() {
 
       new Date(order.createdAt).toLocaleDateString(),
 
-      claimedOrderIds.includes(order.id.split("/").pop()) ? (
-        <span
-          style={{
-            color: "#666",
-            fontStyle: "italic",
-          }}
-        >
-          Claim filed
-        </span>
-      ) : (
-        <button
-          key={`action-${order.id}`}
-          onClick={() => navigate(`/app/order/${order.id.split("/").pop()}`)}
-          style={{
-            background: "none",
-            border: "none",
-            padding: 0,
-            margin: 0,
-            color: "#CC62C7",
-            cursor: "pointer",
-            font: "inherit",
-          }}
-        >
-          File claim
-        </button>
-      ),
+      (() => {
+        const orderId = order.id.split("/").pop();
+        const claimStatus = claimStatusMap.get(orderId);
+        if (claimStatus === 'expired') {
+          return (
+            <span
+              style={{
+                color: "#666",
+                fontStyle: "italic",
+              }}
+            >
+              Expired
+            </span>
+          );
+        } else if (claimedOrderIds.includes(orderId)) {
+          return (
+            <span
+              style={{
+                color: "#666",
+                fontStyle: "italic",
+              }}
+            >
+              Claim filed
+            </span>
+          );
+        } else {
+          const orderDate = new Date(order.createdAt);
+          const expirationDate = new Date(orderDate.getTime() + days * 24 * 60 * 60 * 1000);
+          if (expirationDate < now) {
+            return (
+              <span
+                style={{
+                  color: "#666",
+                  fontStyle: "italic",
+                }}
+              >
+                expired
+              </span>
+            );
+          } else {
+            return (
+              <button
+                key={`action-${order.id}`}
+                onClick={() => navigate(`/app/order/${orderId}`)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  margin: 0,
+                  color: "#CC62C7",
+                  cursor: "pointer",
+                  font: "inherit",
+                }}
+              >
+                File claim
+              </button>
+            );
+          }
+        }
+      })(),
     ];
   });
 
   return (
-    <div className={styles.protectionWidget}>
-      <Page>
-        <Layout>
-          <Layout.Section>
-            <BlockStack gap="400">
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Text as="h2" variant="headingLg">
-                  Orders
+
+    <Page>
+
+      <BlockStack gap="400">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Text as="h2" variant="headingLg">
+            Orders
+          </Text>
+
+          <DateRangePicker
+            onApply={handleApply}
+            initialRange={predefinedRanges[3]}
+            predefinedRanges={predefinedRanges}
+          />
+        </div>
+
+        <Card roundedAbove="sm">
+          <InlineGrid
+            gap="400"
+            columns={{ xs: 1, sm: 2, md: 2, lg: 2, xl: 2 }}
+          >
+            <div className={styles.card}>
+              <BlockStack gap="0">
+                <Text as="h2" variant="headingMd" fontWeight="bold">
+                  Protected orders
                 </Text>
 
-                <DateRangePicker
-                  onApply={handleApply}
-                  initialRange={predefinedRanges[3]}
-                  predefinedRanges={predefinedRanges}
-                />
-              </div>
-
-              <Card roundedAbove="sm">
-                <InlineGrid
-                  gap="400"
-                  columns={{ xs: 1, sm: 2, md: 2, lg: 2, xl: 2 }}
+                <div
+                  style={{
+                    alignItems: "end",
+                    minHeight: "40px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                  }}
                 >
-                  <div className={styles.card}>
-                    <BlockStack gap="0">
-                      <Text as="h2" variant="headingMd" fontWeight="bold">
-                        Protected orders
-                      </Text>
-
-                      <div
-                        style={{
-                          alignItems: "end",
-                          minHeight: "40px",
-                          display: "flex",
-                          justifyContent: "space-between",
-                        }}
-                      >
-                        <Text as="h2" variant="headingMd" fontWeight="bold">
-                          {orders.length}
-                        </Text>
-                        <div style={{ width: 200, height: 40 }}>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={graphData}>
-                              <XAxis dataKey="date" hide />
-                              <YAxis hide domain={["dataMin", "dataMax"]} />
-                              <Tooltip />
-                              <Area
-                                type="natural"
-                                dataKey="protectedOrders"
-                                stroke="#CC62C7"
-                                fill="#CC62C7"
-                                fillOpacity={0.3}
-                                strokeWidth={2}
-                                dot={false}
-                              />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
-                    </BlockStack>
+                  <Text as="h2" variant="headingMd" fontWeight="bold">
+                    {orders.length}
+                  </Text>
+                  <div style={{ width: 200, height: 40 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={graphData}>
+                        <XAxis dataKey="date" hide />
+                        <YAxis hide domain={["dataMin", "dataMax"]} />
+                        <Tooltip />
+                        <Area
+                          type="natural"
+                          dataKey="protectedOrders"
+                          stroke="#CC62C7"
+                          fill="#CC62C7"
+                          fillOpacity={0.3}
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
+                </div>
+              </BlockStack>
+            </div>
 
-                  <div className={styles.card}>
-                    <BlockStack gap="0">
-                      <Text as="h2" variant="headingMd" fontWeight="bold">
-                        Average protection paid
-                      </Text>
+            <div className={styles.card}>
+              <BlockStack gap="0">
+                <Text as="h2" variant="headingMd" fontWeight="bold">
+                  Average protection paid
+                </Text>
 
-                      <div
-                        style={{
-                          alignItems: "end",
-                          minHeight: "40px",
-                          display: "flex",
-                          justifyContent: "space-between",
-                        }}
-                      >
-                        <Text as="h2" variant="headingMd" fontWeight="bold">
-                          {(() => {
-                            if (orders.length === 0) return "N/A";
-                            const totalProtection = orders.reduce(
-                              (sum, order) => {
-                                const protectionItem =
-                                  order.lineItems.edges.find(
-                                    (li) =>
-                                      li.node.title === "Shipping Protections",
-                                  );
-                                const amount = protectionItem
-                                  ? parseFloat(
-                                      protectionItem.node.originalTotalSet
-                                        .shopMoney.amount,
-                                    )
-                                  : 0;
-                                return sum + amount;
-                              },
-                              0,
+                <div
+                  style={{
+                    alignItems: "end",
+                    minHeight: "40px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Text as="h2" variant="headingMd" fontWeight="bold">
+                    {(() => {
+                      if (orders.length === 0) return "N/A";
+                      const totalProtection = orders.reduce(
+                        (sum, order) => {
+                          const protectionItem =
+                            order.lineItems.edges.find(
+                              (li) =>
+                                li.node.title === "Shipping Protections",
                             );
-                            const avgProtection =
-                              totalProtection / orders.length;
-                            const currencyCode =
-                              orders[0].lineItems.edges[0]?.node
-                                .originalTotalSet.shopMoney.currencyCode || "";
-                            return `${avgProtection.toFixed(2)} ${currencyCode}`;
-                          })()}
-                        </Text>
-                        <div style={{ width: 150, height: 40 }}>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={graphData}>
-                              <XAxis dataKey="date" hide />
-                              <YAxis hide domain={["dataMin", "dataMax"]} />
-                              <Tooltip />
-                              <Area
-                                type="natural"
-                                dataKey="avgProtection"
-                                stroke="#CC62C7"
-                                fill="#CC62C7"
-                                fillOpacity={0.3}
-                                strokeWidth={2}
-                                dot={false}
-                              />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
-                    </BlockStack>
+                          const amount = protectionItem
+                            ? parseFloat(
+                              protectionItem.node.originalTotalSet
+                                .shopMoney.amount,
+                            )
+                            : 0;
+                          return sum + amount;
+                        },
+                        0,
+                      );
+                      const avgProtection =
+                        totalProtection / orders.length;
+                      const currencyCode =
+                        orders[0].lineItems.edges[0]?.node
+                          .originalTotalSet.shopMoney.currencyCode || "";
+                      return `${avgProtection.toFixed(2)} ${currencyCode}`;
+                    })()}
+                  </Text>
+                  <div style={{ width: 150, height: 40 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={graphData}>
+                        <XAxis dataKey="date" hide />
+                        <YAxis hide domain={["dataMin", "dataMax"]} />
+                        <Tooltip />
+                        <Area
+                          type="natural"
+                          dataKey="avgProtection"
+                          stroke="#CC62C7"
+                          fill="#CC62C7"
+                          fillOpacity={0.3}
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
+                </div>
+              </BlockStack>
+            </div>
 
-                  {/* <div className={styles.card}>
+            {/* <div className={styles.card}>
                     <BlockStack gap="400">
                       <Text as="h2" variant="headingMd" fontWeight="bold">
                         Orders with protection
@@ -639,209 +747,207 @@ export default function OrdersPage() {
                       </InlineGrid>
                     </BlockStack>
                   </div> */}
-                </InlineGrid>
-              </Card>
+          </InlineGrid>
+        </Card>
 
-              <Card padding="0">
-                <div className={styles.filters}>
-                  <TextField
-                    label="Tagged with"
-                    fullWidth
-                    autoComplete="off"
-                    labelHidden
-                    prefix={<Icon source={SearchIcon} />}
-                    placeholder="Search orders number or email"
-                    value={searchQuery}
-                    onChange={setSearchQuery}
-                  />
+        <Card padding="0">
+          <div className={styles.filters}>
+            <TextField
+              label="Tagged with"
+              fullWidth
+              autoComplete="off"
+              labelHidden
+              prefix={<Icon source={SearchIcon} />}
+              placeholder="Search orders number or email"
+              value={searchQuery}
+              onChange={setSearchQuery}
+            />
 
-                  <Popover
-                    active={fulfillmentPopoverActive}
-                    activator={
-                      <Button
-                        textAlign="left"
-                        fullWidth
-                        size="large"
-                        disclosure={fulfillmentPopoverActive ? "up" : "down"}
-                        onClick={toggleFulfillmentPopoverActive}
-                      >
-                        Fulfillment status
-                      </Button>
-                    }
-                    onClose={toggleFulfillmentPopoverActive}
-                  >
-                    <div style={{ padding: "10px", width: "220px" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "8px",
-                        }}
-                      >
-                        {fulfillmentStatusOptions.map(
-                          ({ label, value, count }) => (
-                            <Checkbox
-                              key={value}
-                              label={`${label} (${count})`}
-                              checked={selectedFulfillmentStatuses.includes(
-                                value,
-                              )}
-                              onChange={() =>
-                                handleFulfillmentStatusChange(value)
-                              }
-                            />
-                          ),
+            <Popover
+              active={fulfillmentPopoverActive}
+              activator={
+                <Button
+                  textAlign="left"
+                  fullWidth
+                  size="large"
+                  disclosure={fulfillmentPopoverActive ? "up" : "down"}
+                  onClick={toggleFulfillmentPopoverActive}
+                >
+                  Fulfillment status
+                </Button>
+              }
+              onClose={toggleFulfillmentPopoverActive}
+            >
+              <div style={{ padding: "10px", width: "220px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
+                  {fulfillmentStatusOptions.map(
+                    ({ label, value, count }) => (
+                      <Checkbox
+                        key={value}
+                        label={`${label} (${count})`}
+                        checked={selectedFulfillmentStatuses.includes(
+                          value,
                         )}
-                        <Button
-                          plain
-                          onClick={() => setSelectedFulfillmentStatuses([])}
-                          style={{ marginTop: "10px" }}
-                        >
-                          Clear
-                        </Button>
-                      </div>
-                    </div>
-                  </Popover>
-
-                  <Popover
-                    active={sortPopoverActive}
-                    activator={
-                      <Button
-                        icon={SortIcon}
-                        size="large"
-                        iconPosition="after"
-                        onClick={toggleSortPopoverActive}
+                        onChange={() =>
+                          handleFulfillmentStatusChange(value)
+                        }
                       />
-                    }
-                    onClose={toggleSortPopoverActive}
+                    ),
+                  )}
+                  <Button
+                    plain
+                    onClick={() => setSelectedFulfillmentStatuses([])}
+                    style={{ marginTop: "10px" }}
                   >
-                    <div style={{ padding: "10px", width: "220px" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "8px",
-                        }}
-                      >
-                        <Text variant="headingMd" as="h3">
-                          Sort by
-                        </Text>
-                        {sortOptions.map(({ label, value }) => (
-                          <RadioButton
-                            key={value}
-                            label={label}
-                            checked={selectedSortOption === value}
-                            id={value}
-                            name="sortOption"
-                            onChange={() => handleSortOptionChange(value)}
-                          />
-                        ))}
-
-                        <div
-                          onClick={() => handleSortDirectionChange("ascending")}
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "20px 1fr",
-                            alignItems: "center",
-                            cursor: "pointer",
-                            fontWeight:
-                              sortDirection === "ascending" ? "bold" : "normal",
-                            padding: "4px 0",
-                            columnGap: "8px",
-                            background:
-                              sortDirection === "ascending"
-                                ? "linear-gradient(134deg, #faeff9 4.31%, #efeaf7 95.02%)"
-                                : "transparent",
-                            borderRadius: "4px",
-                            paddingLeft: "8px",
-                          }}
-                        >
-                          <Icon source={CaretUpIcon} />
-                          <span>Ascending</span>
-                        </div>
-                        <div
-                          onClick={() =>
-                            handleSortDirectionChange("descending")
-                          }
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "20px 1fr",
-                            alignItems: "center",
-                            cursor: "pointer",
-                            fontWeight:
-                              sortDirection === "descending"
-                                ? "bold"
-                                : "normal",
-                            padding: "4px 0",
-                            columnGap: "8px",
-                            background:
-                              sortDirection === "descending"
-                                ? "linear-gradient(134deg, #faeff9 4.31%, #efeaf7 95.02%)"
-                                : "transparent",
-                            borderRadius: "4px",
-                            paddingLeft: "8px",
-                          }}
-                        >
-                          <Icon source={CaretDownIcon} />
-                          <span>Descending</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Popover>
+                    Clear
+                  </Button>
                 </div>
+              </div>
+            </Popover>
 
-                {navigation.state === "loading" ? (
-                  <div style={{ padding: "20px", textAlign: "center" }}>
-                    <Spinner accessibilityLabel="Loading orders" size="large" />
-                    <Text>Loading orders...</Text>
-                  </div>
-                ) : sortedOrders.length === 0 ? (
-                  <EmptyState
-                    heading="No orders found"
-                    image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
-                  >
-                    <p>
-                      No orders match the current filters. Try adjusting your
-                      search or date range.
-                    </p>
-                  </EmptyState>
-                ) : (
-                  <DataTable
-                    columnContentTypes={[
-                      "text",
-                      "text",
-                      "text",
-                      "text",
-                      "text",
-                      "text",
-                      "text",
-                      "text",
-                    ]}
-                    headings={[
-                      "Order No.",
-                      "Email",
-                      "Protection fee",
-                      "Order paid",
-                      "Protection status",
-                      "Fulfillment status",
-                      "Date",
-                      "Action",
-                    ]}
-                    rows={rows}
-                    verticalAlignment="middle"
-                    pagination={{
-                      hasNext: currentPage * pageSize < sortedOrders.length,
-                      hasPrevious: currentPage > 1,
-                      onNext: () => setCurrentPage(currentPage + 1),
-                      onPrevious: () => setCurrentPage(currentPage - 1),
+            <Popover
+              active={sortPopoverActive}
+              activator={
+                <Button
+                  icon={SortIcon}
+                  size="large"
+                  iconPosition="after"
+                  onClick={toggleSortPopoverActive}
+                />
+              }
+              onClose={toggleSortPopoverActive}
+            >
+              <div style={{ padding: "10px", width: "220px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
+                  <Text variant="headingMd" as="h3">
+                    Sort by
+                  </Text>
+                  {sortOptions.map(({ label, value }) => (
+                    <RadioButton
+                      key={value}
+                      label={label}
+                      checked={selectedSortOption === value}
+                      id={value}
+                      name="sortOption"
+                      onChange={() => handleSortOptionChange(value)}
+                    />
+                  ))}
+
+                  <div
+                    onClick={() => handleSortDirectionChange("ascending")}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "20px 1fr",
+                      alignItems: "center",
+                      cursor: "pointer",
+                      fontWeight:
+                        sortDirection === "ascending" ? "bold" : "normal",
+                      padding: "4px 0",
+                      columnGap: "8px",
+                      background:
+                        sortDirection === "ascending"
+                          ? "linear-gradient(134deg, #faeff9 4.31%, #efeaf7 95.02%)"
+                          : "transparent",
+                      borderRadius: "4px",
+                      paddingLeft: "8px",
                     }}
-                  />
-                )}
-              </Card>
-            </BlockStack>
-          </Layout.Section>
-        </Layout>
-      </Page>
-    </div>
+                  >
+                    <Icon source={CaretUpIcon} />
+                    <span>Ascending</span>
+                  </div>
+                  <div
+                    onClick={() =>
+                      handleSortDirectionChange("descending")
+                    }
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "20px 1fr",
+                      alignItems: "center",
+                      cursor: "pointer",
+                      fontWeight:
+                        sortDirection === "descending"
+                          ? "bold"
+                          : "normal",
+                      padding: "4px 0",
+                      columnGap: "8px",
+                      background:
+                        sortDirection === "descending"
+                          ? "linear-gradient(134deg, #faeff9 4.31%, #efeaf7 95.02%)"
+                          : "transparent",
+                      borderRadius: "4px",
+                      paddingLeft: "8px",
+                    }}
+                  >
+                    <Icon source={CaretDownIcon} />
+                    <span>Descending</span>
+                  </div>
+                </div>
+              </div>
+            </Popover>
+          </div>
+
+          {navigation.state === "loading" ? (
+            <div style={{ padding: "20px", textAlign: "center" }}>
+              <Spinner accessibilityLabel="Loading orders" size="large" />
+              <Text>Loading orders...</Text>
+            </div>
+          ) : sortedOrders.length === 0 ? (
+            <EmptyState
+              heading="No orders found"
+              image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+            >
+              <p>
+                No orders match the current filters. Try adjusting your
+                search or date range.
+              </p>
+            </EmptyState>
+          ) : (
+            <DataTable
+              columnContentTypes={[
+                "text",
+                "text",
+                "text",
+                "text",
+                "text",
+                "text",
+                "text",
+                "text",
+              ]}
+              headings={[
+                "Order No.",
+                "Email",
+                "Protection fee",
+                "Order paid",
+                "Protection status",
+                "Fulfillment status",
+                "Date",
+                "Action",
+              ]}
+              rows={rows}
+              verticalAlignment="middle"
+              pagination={{
+                hasNext: currentPage * pageSize < sortedOrders.length,
+                hasPrevious: currentPage > 1,
+                onNext: () => setCurrentPage(currentPage + 1),
+                onPrevious: () => setCurrentPage(currentPage - 1),
+              }}
+            />
+          )}
+        </Card>
+      </BlockStack>
+    </Page>
+
   );
 }
