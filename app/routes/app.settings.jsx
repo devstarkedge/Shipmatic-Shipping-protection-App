@@ -28,6 +28,8 @@ export default function settings() {
       navigate("/app/settings");
     } else if (selected.includes("claim_portal_preference")) {
       navigate("/app/settings/claimPortal");
+    }else if (selected.includes("notification")) {
+      navigate("/app/settings/notifications");
     }
   }, [selected, navigate]);
 

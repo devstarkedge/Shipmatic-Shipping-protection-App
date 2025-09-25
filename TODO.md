@@ -1,0 +1,5 @@
+- [x] Add notification_settings model to Prisma schema
+- [ ] Update app.settings.notifications.jsx with loader and action functions
+- [ ] Convert component to use forms, fetcher, and save bar
+- [ ] Run Prisma migration
+- [ ] Test the implementation

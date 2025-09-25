@@ -92,3 +92,17 @@ model claim_portal_settings {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
+
+model notification_settings {
+  id                     String   @id @default(cuid())
+  shop                   String   @unique
+  senderName             String   @default("wisdom-app-setup")
+  senderEmail            String   @default("no-reply@captaintop.net")
+  replyEmail             String   @default("shopifydevse@gmail.com")
+  claimSubmitted         Boolean  @default(true)
+  claimApprovedRefunded  Boolean  @default(true)
+  claimApprovedReordered Boolean  @default(true)
+  claimDeclined          Boolean  @default(false)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
