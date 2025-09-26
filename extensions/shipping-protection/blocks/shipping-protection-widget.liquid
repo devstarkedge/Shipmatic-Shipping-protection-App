@@ -126,91 +126,68 @@
   async function addProtectionToCart() {
     if (!protectionVariantId) return;
 
-    const formData = {
-      items: [{
-        id: protectionVariantId,
-        quantity: 1,
-        properties: {
-          '_shipping_protection': 'true',
-          '_protection_price': calculateProtectionPrice(),
-          '_cart_total_at_time': cartTotal.toFixed(2)
-        }
-      }]
-    };
+    const numericVariantId = protectionVariantId.split('/').pop();
 
-    try {
-      const response = await fetch('/cart/add.js', {
+
+
+ const variantId = numericVariantId; 
+    const quantity = 1; 
+
+    fetch('/cart/add.js', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
-      });
-
-      console.log(response)
-
-      if (response.ok) {
-        // Trigger cart update events
-        document.dispatchEvent(new CustomEvent('cart:updated'));
-        
-        // Refresh page or update cart UI
-        if (typeof window.location !== 'undefined') {
-          window.location.reload();
-        }
-      } else {
-        console.error('Failed to add protection to cart', response.status, response.statusText);
-      }
-    } catch (error) {
-      console.error('Error adding protection to cart:', error);
-    }
-  }
-
-  // Remove protection product from cart
-  async function removeProtectionFromCart() {
-    try {
-      // Get current cart
-      const cartResponse = await fetch('/cart.js');
-      const cart = await cartResponse.json();
-      
-      // Find protection item
-      const protectionItem = cart.items.find(item => 
-        (item.properties && item.properties._shipping_protection === 'true') ||
-        item.variant_id.toString() === protectionVariantId.toString()
-      );
-
-      if (protectionItem) {
-        await fetch('/cart/change.js', {
-          method: 'POST',
-          headers: {
             'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            id: protectionItem.key,
-            quantity: 0
-          })
-        });
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            id: variantId,
+            quantity: quantity
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+      
+         window.location.href = '/checkout';
+       
+    })
+    
 
-        // Trigger cart update events
-        document.dispatchEvent(new CustomEvent('cart:updated'));
-        
-        // Refresh page or update cart UI
-        if (typeof window.location !== 'undefined') {
-          window.location.reload();
-        }
-      }
-    } catch (error) {
-      console.error('Error removing protection from cart:', error);
-    }
+   
   }
+
+
+
+
+
+
+
+
+  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('click', function(e) {
+    if (e.target.matches('button.cart__checkout-button')) {
+      e.preventDefault();
+      const toggleInput = document.querySelector('.shipping-protection-widget .protection-toggle');
+      console.log('please check', toggleInput.checked);
+      if(toggleInput.checked ==  true){
+   addProtectionToCart();
+      }else{
+          window.location.href = '/checkout';
+      }
+    
+    }
+  });
+});
+
+  
 
   // Handle protection toggle
   function handleProtectionToggle() {
     isProtectionSelected = !isProtectionSelected;
     
     if (isProtectionSelected) {
-      addProtectionToCart();
+  
     } else {
-      removeProtectionFromCart();
+    
     }
     
     updateWidgetDisplay();
@@ -421,6 +398,13 @@
   document.addEventListener('cart:updated', checkExistingProtection);
   
 })();
+
+
+
+
+
+
+
 </script>
 
 {% schema %}
