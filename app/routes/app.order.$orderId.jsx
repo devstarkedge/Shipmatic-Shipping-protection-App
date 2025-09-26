@@ -9,6 +9,7 @@ import {
 import { json, redirect } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { sendClaimSubmittedEmail } from "../utils/email.js";
 import {
   Page,
   Layout,
@@ -132,16 +133,18 @@ export async function loader({ request, params }) {
 
   const defaultReasons = [
     { label: "Damaged", value: "damaged" },
+
+    { label: "Lost", value: "lost" },
+    { label: "Stolen", value: "stolen" },
     { label: "Wrong item", value: "wrong_item" },
-    { label: "Missing item", value: "missing_item" },
     { label: "Other", value: "other" },
   ];
 
   const reasonOptions = settings?.claimReasons && settings.claimReasons.length > 0
     ? settings.claimReasons.map(reason => ({
-        label: reason.name,
-        value: reason.name.toLowerCase().replace(/\s+/g, '_')
-      }))
+      label: reason.name,
+      value: reason.name.toLowerCase().replace(/\s+/g, '_')
+    }))
     : defaultReasons;
 
   return json({ order, settings, isExpired, reasonOptions });
@@ -170,13 +173,11 @@ export async function action({ request, params }) {
   const claimData = JSON.parse(claimDataStr);
 
   try {
-    // Check if a claim for this orderId already exists
     const existingClaim = await prisma.claim.findFirst({
       where: { orderId },
     });
 
     if (existingClaim) {
-      // Check if the existing claim is expired
       const settings = await prisma.claim_portal_settings.findUnique({
         where: { shop: session.shop },
       });
@@ -187,7 +188,6 @@ export async function action({ request, params }) {
       if (!isExpired) {
         return redirect(`/app/order/${orderId}?duplicate=true`);
       }
-      // If expired, proceed to create new claim (old one is expired)
     }
 
     let id;
@@ -209,6 +209,47 @@ export async function action({ request, params }) {
         method,
       },
     });
+
+    // Send email notification if enabled
+    const notificationSettings = await prisma.notification_settings.findUnique({
+      where: { shop: session.shop },
+    });
+
+    if (notificationSettings?.claimSubmitted) {
+      // Fetch customer email
+      let globalOrderId = orderId;
+      if (!orderId.startsWith("gid://")) {
+        globalOrderId = `gid://shopify/Order/${orderId}`;
+      }
+
+      const emailQuery = `#graphql
+        {
+          order(id: "${globalOrderId}") {
+            customer {
+              email
+            }
+          }
+        }
+      `;
+
+      const emailResponse = await admin.graphql(emailQuery);
+      const emailData = await emailResponse.json();
+
+      if (emailData.data?.order?.customer?.email) {
+        const customerEmail = emailData.data.order.customer.email;
+
+        await sendClaimSubmittedEmail({
+          to: customerEmail,
+          claimId: id,
+          orderId,
+          items: claimData,
+          method,
+          senderName: notificationSettings.senderName || "wisdom-app-setup",
+          senderEmail: notificationSettings.senderEmail || "no-reply@captaintop.net",
+          replyEmail: notificationSettings.replyEmail || "shopifydevse@gmail.com",
+        });
+      }
+    }
 
     return redirect(`/app/claims?success=true`);
   } catch (error) {

@@ -24,11 +24,13 @@ export async function loader({ request }) {
         where: { shop },
     });
 
+
     const defaultClaimReasons = [
         { id: '1', name: 'Damaged', order: 1 },
         { id: '2', name: 'Lost', order: 2 },
         { id: '3', name: 'Stolen', order: 3 },
-        { id: '4', name: 'Other', order: 4 }
+        { id: '4', name: 'Wrong item', order: 4 },
+        { id: '5', name: 'Other', order: 5 }
     ];
 
     const finalClaimReasons = (settings?.claimReasons && settings.claimReasons.length > 0) ? settings.claimReasons : defaultClaimReasons;
