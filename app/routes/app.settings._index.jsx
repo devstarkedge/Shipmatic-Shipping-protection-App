@@ -6,10 +6,11 @@ import {
   TextField,
   Button,
   Icon,
+  Badge,
 } from "@shopify/polaris";
+import { SearchIcon, XIcon } from "@shopify/polaris-icons";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useAppBridge, SaveBar } from "@shopify/app-bridge-react";
-import { SearchIcon } from "@shopify/polaris-icons";
 import { useLoaderData, useFetcher } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { json } from "@remix-run/node";
@@ -107,7 +108,6 @@ export default function ProtectionSettings() {
     fulfillmentRule: settings.fulfillmentRule,
     productSKU: settings.productSKU,
     exclusionType: settings.exclusionType,
-    searchValue: "",
     excludedProductTypes: settings.exclusionValues || [],
     excludedSkus: settings.exclusionValues || [],
   });
@@ -115,7 +115,6 @@ export default function ProtectionSettings() {
   const [fulfillmentRule, setFulfillmentRule] = useState(settings.fulfillmentRule);
   const [productSKU, setProductSKU] = useState(settings.productSKU);
   const [exclusionType, setExclusionType] = useState(settings.exclusionType);
-  const [searchValue, setSearchValue] = useState("");
 
   const [isDirty, setIsDirty] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -145,12 +144,19 @@ export default function ProtectionSettings() {
     fetcher,
   ]);
 
+  const handleRemoveExclusion = useCallback((idToRemove) => {
+    if (exclusionType === "product_type") {
+      setExcludedProductTypes((prev) => prev.filter((id) => id !== idToRemove));
+    } else {
+      setExcludedSkus((prev) => prev.filter((id) => id !== idToRemove));
+    }
+  }, [exclusionType]);
+
   const handleDiscard = useCallback(() => {
     console.log("discard");
     setFulfillmentRule(originalValues.fulfillmentRule);
     setProductSKU(originalValues.productSKU);
     setExclusionType(originalValues.exclusionType);
-    setSearchValue(originalValues.searchValue);
     setExcludedProductTypes(originalValues.excludedProductTypes || []);
     setExcludedSkus(originalValues.excludedSkus || []);
     setIsDirty(false);
@@ -165,7 +171,6 @@ export default function ProtectionSettings() {
           fulfillmentRule,
           productSKU,
           exclusionType,
-          searchValue,
           excludedProductTypes,
           excludedSkus,
         });
@@ -181,7 +186,6 @@ export default function ProtectionSettings() {
     fulfillmentRule,
     productSKU,
     exclusionType,
-    searchValue,
     excludedProductTypes,
     excludedSkus,
     shopify,
@@ -192,7 +196,6 @@ export default function ProtectionSettings() {
       fulfillmentRule !== originalValues.fulfillmentRule ||
       productSKU !== originalValues.productSKU ||
       exclusionType !== originalValues.exclusionType ||
-      searchValue !== originalValues.searchValue ||
       JSON.stringify(excludedProductTypes) !==
       JSON.stringify(originalValues.excludedProductTypes || []) ||
       JSON.stringify(excludedSkus) !==
@@ -211,7 +214,6 @@ export default function ProtectionSettings() {
     fulfillmentRule,
     productSKU,
     exclusionType,
-    searchValue,
     excludedProductTypes,
     excludedSkus,
     originalValues,
@@ -229,35 +231,23 @@ export default function ProtectionSettings() {
   const handleAddProductTypes = useCallback(
     (selectedTypes) => {
       setExcludedProductTypes(selectedTypes);
-      const typeLabels = selectedTypes.map((typeId) => {
-        const typeObj = formattedProductTypes.find(
-          (type) => type.id === typeId,
-        );
-        return typeObj ? typeObj.label : typeId;
-      });
-      setSearchValue(typeLabels.join(", "));
     },
-    [formattedProductTypes],
+    [],
   );
 
   const handleAddSkus = useCallback(
     (selectedSkus) => {
       setExcludedSkus(selectedSkus);
-      const skuLabels = selectedSkus.map((skuId) => {
-        const skuObj = formattedSkus.find((sku) => sku.id === skuId);
-        return skuObj ? skuObj.label : skuId;
-      });
-      setSearchValue(skuLabels.join(", "));
     },
-    [formattedSkus],
+    [],
   );
 
   return (
     <>
       {/* App Bridge SaveBar */}
       <SaveBar id="protection-save-bar" open={isDirty}>
-        <button variant="primary" onClick={handleSave}></button>
-        <button onClick={handleDiscard}></button>
+        <button variant="primary" onClick={handleSave}>Save</button>
+        <button onClick={handleDiscard}>Discard</button>
       </SaveBar>
 
       <BlockStack gap="600">
@@ -351,13 +341,8 @@ export default function ProtectionSettings() {
             >
               <div style={{ flexGrow: "1" }}>
                 <TextField
-                  value={searchValue}
-                  onChange={(val) => {
-                    setSearchValue(val);
-                    if (val.trim()) {
-                      setIsModalOpen(true);
-                    }
-                  }}
+                  value=""
+                  onFocus={() => setIsModalOpen(true)}
                   placeholder={
                     exclusionType === "sku"
                       ? "Search specific SKUs"
@@ -369,6 +354,39 @@ export default function ProtectionSettings() {
 
               <Button onClick={handleBrowseClick}>Browse</Button>
             </div>
+
+            {(() => {
+              const currentExclusions = exclusionType === "product_type" ? excludedProductTypes : excludedSkus;
+              const currentList = exclusionType === "product_type" ? formattedProductTypes : formattedSkus;
+              if (currentExclusions.length > 0) {
+                return (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", }}>
+                    {currentExclusions.map((id) => {
+                      const item = currentList.find((item) => item.id === id);
+                      if (!item) return null;
+                      return (
+                        <Badge key={id} tone="subdued">
+                          <div style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%" }}>
+                            <Text variant="bodySm" fontWeight="medium">{item.label}</Text>
+                            <div
+                              style={{ marginLeft: "auto", cursor: "pointer" }}
+                              onClick={() => handleRemoveExclusion(id)}
+                            >
+                              <Icon
+                                source={XIcon}
+                                tone="subdued"
+                                style={{ width: "12px", height: "12px" }}
+                              />
+                            </div>
+                          </div>
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </BlockStack>
         </Card>
       </BlockStack>
@@ -380,7 +398,7 @@ export default function ProtectionSettings() {
           onClose={handleModalClose}
           onAdd={handleAddProductTypes}
           initialSelectedTypes={excludedProductTypes}
-          initialSearchValue={searchValue}
+          initialSearchValue=""
           productTypes={formattedProductTypes}
         />
       ) : (
@@ -389,7 +407,7 @@ export default function ProtectionSettings() {
           onClose={handleModalClose}
           onAdd={handleAddSkus}
           initialSelectedSkus={excludedSkus}
-          initialSearchValue={searchValue}
+          initialSearchValue=""
           skus={formattedSkus}
         />
       )}
