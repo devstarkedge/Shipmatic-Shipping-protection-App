@@ -1,8 +1,3 @@
-{% comment %}
-  Shipping Protection Widget Block
-  Location: extensions/shipping-protection/blocks/shipping-protection-widget.liquid
-{% endcomment %}
-
 {%- liquid
   assign app_id = 'your-app-id'
   assign shop_domain = shop.permanent_domain
@@ -23,6 +18,7 @@
 </div>
 
 <script>
+
 
 (function() {
   const widgetId = 'shipping-protection-widget-{{ block.id }}';
@@ -55,7 +51,7 @@
       });
 
 
-      console.log(response);
+      
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -233,6 +229,8 @@
     }
   }
 
+
+
   // Render the widget
   function renderWidget() {
     if (!widgetData) return;
@@ -252,7 +250,7 @@
         font-family: inherit;
       ">
 
-      
+    
         <div style="display: flex; align-items: flex-start; gap: 12px;">
           ${showIcon ? `
             <div style="flex-shrink: 0;">
@@ -405,32 +403,43 @@
 
 
 
+(function() {
+  const container = document.getElementById('shipping-protection-widget-{{ block.id }}');
+  if (!container) return;
+
+  // Function to move container before .cart__ctas
+  function moveBeforeCartCTAs() {
+    const cartCTAs = document.querySelector('.cart__ctas');
+    if (cartCTAs && container) {
+      cartCTAs.insertAdjacentElement('beforebegin', container);
+    }
+  }
+
+  // Call after widget is rendered
+  document.addEventListener('DOMContentLoaded', () => {
+    const interval = setInterval(() => {
+      const cartCTAs = document.querySelector('.cart__ctas');
+      if (cartCTAs) {
+        moveBeforeCartCTAs();
+        clearInterval(interval);
+      }
+    }, 100); // keep checking until cart__ctas exists
+  });
+
+})();
 
 
 
 </script>
 
+
+
 {% schema %}
 {
   "name": "Shipping Protection",
-  "target": "section",
+  "target": "body",
   "settings": [
-    {
-      "type": "header",
-      "content": "Widget Settings"
-    },
-    {
-      "type": "checkbox",
-      "id": "show_widget",
-      "label": "Show protection widget",
-      "default": true
-    },
-    {
-      "type": "text",
-      "id": "custom_css",
-      "label": "Custom CSS classes",
-      "info": "Add custom CSS classes for styling"
-    }
+    { "type": "text", "id": "class", "label": "Class", "default": "button"}
   ]
 }
 {% endschema %}
