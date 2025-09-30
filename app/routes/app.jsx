@@ -30,12 +30,12 @@ export default function App() {
           <Link to="/app/protectionWidget" >
             Protection widget
           </Link>
-          <Link to="/app/order" >
+          {/* <Link to="/app/order" >
             Orders
-          </Link>
-          <Link to="/app/claims" >
+          </Link> */}
+          {/* <Link to="/app/claims" >
             Claims
-          </Link>
+          </Link> */}
           <Link to="/app/settings" >
             Settings
           </Link>

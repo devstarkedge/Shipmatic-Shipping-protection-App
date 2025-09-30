@@ -49,14 +49,14 @@ export default function settings() {
                     label: "Protection setting",
                     value: "protection_setting",
                   },
-                  {
-                    label: "Claim portal preference",
-                    value: "claim_portal_preference",
-                  },
-                  {
-                    label: "Notification",
-                    value: "notification",
-                  },
+                  // {
+                  //   label: "Claim portal preference",
+                  //   value: "claim_portal_preference",
+                  // },
+                  // {
+                  //   label: "Notification",
+                  //   value: "notification",
+                  // },
                  
                 ]}
                 selected={selected}

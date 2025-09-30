@@ -251,7 +251,7 @@ export default function ProtectionSettings() {
       </SaveBar>
 
       <BlockStack gap="600">
-        <Card>
+        {/* <Card>
           <BlockStack gap="400">
             <BlockStack gap="100">
               <Text as="h2" variant="headingMd">
@@ -287,7 +287,7 @@ export default function ProtectionSettings() {
               />
             </BlockStack>
           </BlockStack>
-        </Card>
+        </Card> */}
 
         <Card>
           <BlockStack gap="400">

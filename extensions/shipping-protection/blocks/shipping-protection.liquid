@@ -36,6 +36,8 @@
 
   // Use the correct app proxy endpoint
   const apiEndpoint = `/apps/shipment/cartWidget`;
+
+  console.log('apiEndpoint', apiEndpoint)
   
   // Fetch widget data from your Remix app via app proxy
   async function fetchWidgetData() {
@@ -50,8 +52,6 @@
         }
       });
 
-
-      
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -59,11 +59,15 @@
       
       const data = await response.json();
 
+      console.log(data.widget)
+
      
       
       if (data.success && data.widget) {
         widgetData = data.widget;
         protectionVariantId = widgetData.variantId;
+
+        
         renderWidget();
       } else {
         console.warn('Widget data not available or not published');
@@ -191,12 +195,15 @@
   }
 
   // Update widget display based on selection state
+
+
   function updateWidgetDisplay() {
     const widget = container.querySelector('.protection-widget-content');
     if (!widget) return;
     
     const toggleInput = widget.querySelector('.protection-toggle');
     const description = widget.querySelector('.protection-description');
+    console.log('description', description);
     const slider = widget.querySelector('.toggle-slider');
     const toggleButton = widget.querySelector('.toggle-button');
     
@@ -204,9 +211,7 @@
     
     // Update description
     if (description) {
-      description.textContent = isProtectionSelected 
-        ? widgetData.description 
-        : (widgetData.disabledDescription || widgetData.description);
+      description.textContent = isProtectionSelected ? widgetData.enabledDescription: widgetData.disabledDescription ;
       
       // Update description color
       const colorStates = widgetData.colorStates || {};
@@ -278,7 +283,7 @@
                 font-weight: 600;
                 line-height: 1.3;
               ">
-                ${widgetData.title}
+                ${widgetData.addonTitle}
               </h4>
               
               <div style="display: flex; align-items: center; gap: 8px; white-space: nowrap;">
@@ -347,9 +352,9 @@
               margin: 0; 
               font-size: 14px; 
               line-height: 1.4;
-              color: ${colorStates.enableDescColor || '#282828'};
+              color: ${colorStates.disabledDescColor || '#282828'};
             ">
-              ${widgetData.description}
+              ${widgetData.disabledDescription}
             </p>
           </div>
         </div>
@@ -427,6 +432,17 @@
   });
 
 })();
+
+
+
+
+
+
+
+
+
+
+
 
 
 
