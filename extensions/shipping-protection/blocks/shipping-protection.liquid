@@ -165,7 +165,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', function(e) {
-    if (e.target.matches('button.cart__checkout-button')) {
+    if (e.target.matches('button[name="checkout"]')) {
       e.preventDefault();
       const toggleInput = document.querySelector('.shipping-protection-widget .protection-toggle');
       console.log('please check', toggleInput.checked);
@@ -412,29 +412,73 @@
   const container = document.getElementById('shipping-protection-widget-{{ block.id }}');
   if (!container) return;
 
-  // Function to move container before .cart__ctas
   function moveBeforeCartCTAs() {
-    const cartCTAs = document.querySelector('.cart__ctas');
-    if (cartCTAs && container) {
-      cartCTAs.insertAdjacentElement('beforebegin', container);
+  
+    const target = document.querySelector('.cart__ctas') || document.querySelector('.cart-notification__links');
+
+    if (target && container) {
+      target.insertAdjacentElement('beforebegin', container);
+      console.log("Widget moved before:", target.className);
     }
   }
 
-  // Call after widget is rendered
+ 
   document.addEventListener('DOMContentLoaded', () => {
     const interval = setInterval(() => {
-      const cartCTAs = document.querySelector('.cart__ctas');
-      if (cartCTAs) {
+      const target = document.querySelector('.cart__ctas') || document.querySelector('.cart-notification__links');
+      if (target) {
         moveBeforeCartCTAs();
         clearInterval(interval);
       }
-    }, 100); // keep checking until cart__ctas exists
+    }, 100);
+  });
+
+  // Run again whenever cart updates
+  document.addEventListener("cart:updated", moveBeforeCartCTAs);
+
+  // Run again on button click (cart drawer trigger)
+  document.addEventListener("click", (e) => {
+    if (e.target.matches('button[type="submit"], .cart__checkout-button')) {      
+      setTimeout(moveBeforeCartCTAs, 1200); 
+    }
   });
 
 })();
 
 
 
+
+
+
+
+
+document.addEventListener("DOMContentLoaded", async () => {
+setTimeout(async () => {
+
+  try {
+    const cart = await fetch('/cart.js').then(res => res.json());
+    const itemToRemove = cart.items.find(item => item.product_title === 'Shipping Protections');
+    
+    if (itemToRemove) {
+        await fetch('/cart/change.js', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: itemToRemove.key,
+                    quantity: 0
+                })
+            });
+
+            console.log('Shipping Protections item removed from cart');
+            window.location.reload();
+    } else {
+      console.log('item not load');
+    }
+  } catch (error) {
+    console.error('Error loading cart:', error);
+  }
+  }, 500);
+});
 
 
 
