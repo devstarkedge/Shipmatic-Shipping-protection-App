@@ -45,9 +45,9 @@ export default function AdditionalPage() {
   const fetcher = useFetcher();
 
   // Debug fetcher state
-  console.log("Fetcher state:", fetcher.state);
-  console.log("Fetcher data:", fetcher.data);
-  console.log("Loaded product:", product);
+  // console.log("Fetcher state:", fetcher.state);
+  // console.log("Fetcher data:", fetcher.data);
+  // console.log("Loaded product:", product);
 
   const initialState = {
     selectedPricingOptions: ["percentage"],

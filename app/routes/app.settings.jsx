@@ -15,7 +15,7 @@ export default function settings() {
   const [selected, setSelected] = useState(["protection_setting"]);
   const navigate = useNavigate();
 
-  const handleOptionChange = useCallback((selectedValues) => {
+  const handleOptionChange = useCallback((selectedValues) => {  
     setSelected(selectedValues);
 
     if (selectedValues.includes("protection_setting")) {
@@ -30,7 +30,10 @@ export default function settings() {
       navigate("/app/settings/claimPortal");
     }else if (selected.includes("notification")) {
       navigate("/app/settings/notifications");
+    }else if (selected.includes("general_setting")) {
+      navigate("/app/settings/general");
     }
+    
   }, [selected, navigate]);
 
   return (
@@ -49,6 +52,10 @@ export default function settings() {
                     label: "Protection setting",
                     value: "protection_setting",
                   },
+                  {
+                    label: "General setting",
+                    value: "general_setting",
+                  }
                   // {
                   //   label: "Claim portal preference",
                   //   value: "claim_portal_preference",

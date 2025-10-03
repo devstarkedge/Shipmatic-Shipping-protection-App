@@ -82,16 +82,14 @@ export async function loader({ request }) {
 export default function Index() {
   const { orders, start, end } = useLoaderData();
   const navigate = useNavigate();
-  const [rating, setRating] = useState(0);
+
 
 
   const [active, setActive] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [disabled, setDisabled] = useState(false);
 
-  const handleRating = (value) => {
-    setRating(value);
-  };
+
 
   const [active2, setActive2] = useState(false);
   const [hidden2, setHidden2] = useState(false);
@@ -212,22 +210,7 @@ export default function Index() {
                     your experience with us.
                   </Text>
 
-                  {/* ⭐ Stars */}
-                  <InlineStack gap="100">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <span
-                        key={star}
-                        onClick={() => handleRating(star)}
-                        style={{
-                          cursor: "pointer",
-                          color: rating >= star ? "#FFD700" : "#CCCCCC",
-                          fontSize: "24px",
-                        }}
-                      >
-                        ★
-                      </span>
-                    ))}
-                  </InlineStack>
+                 
                 </InlineStack>
 
                 {/* Right side: "..." menu */}
