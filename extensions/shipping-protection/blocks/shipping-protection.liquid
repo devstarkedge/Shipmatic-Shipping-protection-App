@@ -37,7 +37,7 @@
   // Use the correct app proxy endpoint
   const apiEndpoint = `/apps/shipment/cartWidget`;
 
-  console.log('apiEndpoint', apiEndpoint)
+  
   
   // Fetch widget data from your Remix app via app proxy
   async function fetchWidgetData() {
@@ -59,16 +59,36 @@
       
       const data = await response.json();
 
-      console.log(data.widget)
+      console.log('data_ggggg', data.widget)
 
      
+
+
+
+     
+
+
+
       
       if (data.success && data.widget) {
         widgetData = data.widget;
-        protectionVariantId = widgetData.variantId;
+        protectionVariantId = widgetData.variantId;     
+        if(widgetData.selectedWidgetOptions == '[\"checkout\"]'){
+         const hideCheckout = () => {
+  document.querySelectorAll('button[name="checkout"], a[href*="/checkout"]').forEach(btn => {
+    btn.style.setProperty('display', 'none', 'important');
+    btn.style.setProperty('visibility', 'hidden', 'important');
+  });
+};
+hideCheckout();
 
-        
-        renderWidget();
+new MutationObserver(hideCheckout).observe(document.body, { childList: true, subtree: true });
+  
+  renderWidgetCheckout(); 
+        }else{
+      renderWidget(); 
+        }
+       
       } else {
         console.warn('Widget data not available or not published');
         // Hide widget if no data or not published
@@ -92,6 +112,10 @@
       }
     }
   }
+
+
+
+
 
   // Calculate protection price based on cart total and pricing options
   function calculateProtectionPrice() {
@@ -178,6 +202,22 @@
     }
   });
 });
+
+
+
+
+  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('click', function(e) {
+    if (e.target.matches('.protection-checkout button')) {
+      e.preventDefault();
+     addProtectionToCart();
+    
+    }
+  });
+});
+
+
+
 
   
 
@@ -372,6 +412,46 @@
     // Check if protection is already in cart
     checkExistingProtection();
   }
+
+
+// checckout-weight
+ function renderWidgetCheckout() {
+    if (!widgetData) return;
+
+    const colorStates = widgetData.colorStates || {};
+    const showIcon = widgetData.selectedVisiblityOptions?.includes('show');
+    const useSwitch = widgetData.selectedButtonOptions?.includes('switch');
+    const protectionPrice = calculateProtectionPrice();
+
+    const widgetHTML = `
+      <div class="protection-checkout">
+      <button>
+      Protected checkout  +
+      <span style="
+                  font-size: 14px; 
+                  font-weight: 600;
+                  color: ${colorStates.titleColor || '#000000'};
+                ">
+                  ₹${protectionPrice}
+                </span>
+      </button
+       
+      </div
+    `;
+
+    container.innerHTML = widgetHTML;
+
+    // Add event listener
+    const toggleInput = container.querySelector('.protection-toggle');
+    if (toggleInput) {
+      toggleInput.addEventListener('change', handleProtectionToggle);
+    }
+
+    // Check if protection is already in cart
+    checkExistingProtection();
+  }
+
+
 
   // Check if protection is already in cart and update UI
   async function checkExistingProtection() {

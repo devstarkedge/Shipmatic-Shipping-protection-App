@@ -18,6 +18,7 @@ import {
 import { TitleBar } from "@shopify/app-bridge-react";
 import { MenuHorizontalIcon } from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
+import prisma from "../db.server";
 import DateRangePicker from "../components/DateRangePicker";
 import OrderData from "../components/Orderdata";
 import Faq from "../components/Faq";
@@ -29,7 +30,8 @@ import styles from "./_index/styles.module.css";
 
 
 export async function loader({ request }) {
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
+  const shop = session.shop;
   const url = new URL(request.url);
   const start = url.searchParams.get("start");
   const end = url.searchParams.get("end");
@@ -73,14 +75,24 @@ export async function loader({ request }) {
       return hasSP && hasOther;
     });
 
-  return json({ orders: filtered, start, end });
+  // Fetch general settings
+  const settings = await prisma.general_settings.findUnique({
+    where: { shop },
+  });
+
+  return json({
+    orders: filtered,
+    start,
+    end,
+    setupTutorialEnabled: settings?.setupTutorialEnabled || false
+  });
 }
 
 
 
 
 export default function Index() {
-  const { orders, start, end } = useLoaderData();
+  const { orders, start, end, setupTutorialEnabled } = useLoaderData();
   const navigate = useNavigate();
 
 
@@ -236,95 +248,97 @@ export default function Index() {
               </InlineStack>
             </Card>
 
-            <Card roundedAbove="sm">
-              <InlineStack gap="400" blockAlign="center" align="space-between">
-                <InlineStack gap="400">
-                  <Text as="h4" variant="headingXl">Setup tutorial</Text>
-                  <Card padding="300">
-                    <Text as="h6" variant="headingXs">
-                      1 / 3 completed
-                    </Text>
-                  </Card>
-                </InlineStack>
-                <InlineStack gap="400">
-                  <Popover
-                    active={active2}
-                    activator={
-                      <Button
-                        icon={MenuHorizontalIcon}
-                        onClick={toggleActive2}
-                        accessibilityLabel="More actions"
+            {setupTutorialEnabled && (
+              <Card roundedAbove="sm">
+                <InlineStack gap="400" blockAlign="center" align="space-between">
+                  <InlineStack gap="400">
+                    <Text as="h4" variant="headingXl">Setup tutorial</Text>
+                    <Card padding="300">
+                      <Text as="h6" variant="headingXs">
+                        1 / 3 completed
+                      </Text>
+                    </Card>
+                  </InlineStack>
+                  <InlineStack gap="400">
+                    <Popover
+                      active={active2}
+                      activator={
+                        <Button
+                          icon={MenuHorizontalIcon}
+                          onClick={toggleActive2}
+                          accessibilityLabel="More actions"
+                        />
+                      }
+                      onClose={toggleActive2}
+                      autofocusTarget="first-node"
+                    >
+                      <ActionList
+                        items={[
+                          { content: "Test", onAction: () => setHidden2(true) },
+                          { content: "Test2", onAction: () => setDisabled2(true) },
+                        ]}
                       />
-                    }
-                    onClose={toggleActive2}
-                    autofocusTarget="first-node"
-                  >
-                    <ActionList
-                      items={[
-                        { content: "Test", onAction: () => setHidden2(true) },
-                        { content: "Test2", onAction: () => setDisabled2(true) },
-                      ]}
-                    />
-                  </Popover>
+                    </Popover>
+
+                  </InlineStack>
 
                 </InlineStack>
 
-              </InlineStack>
+
+  <div className={styles.outer_st}>
+                <InlineGrid
+                  gap="400"
+                  columns={{ xs: 1, sm: 3, md: 3, lg: 3, xl: 3 }}
+                >
+                  <div className={styles.outer_setup} >
+                    <BlockStack gap="400">
+                      <InlineStack gap="400">
+                        <CheckIcon size={28} />
+                        <Text>Enable app embed</Text>
+                        <Text>
+                          Please follow the 👉 help docs to enable app embed and complete setup.
+                          This step won't affect your live store. Widget will not appear on your storefront until you've published it from our app.
+                        </Text>
+                        <Button>Enable app embed</Button>
+                        <img src="https://cdn.shopify.com/s/files/1/0605/9891/1037/files/Vector.png" />
 
 
-<div className={styles.outer_st}>
-              <InlineGrid
-                gap="400"
-                columns={{ xs: 1, sm: 3, md: 3, lg: 3, xl: 3 }}
-              >
-                <div className={styles.outer_setup} >
-                  <BlockStack gap="400">
-                    <InlineStack gap="400">
-                      <CheckIcon size={28} />
-                      <Text>Enable app embed</Text>
-                      <Text>
-                        Please follow the 👉 help docs to enable app embed and complete setup.
-                        This step won't affect your live store. Widget will not appear on your storefront until you've published it from our app.
-                      </Text>
-                      <Button>Enable app embed</Button>
-                      <img src="https://cdn.shopify.com/s/files/1/0605/9891/1037/files/Vector.png" />
+                      </InlineStack>
+                    </BlockStack>
+                  </div>
 
+                  <div className={styles.outer_setup}>
+                    <BlockStack gap="400">
+                      <InlineStack gap="400">
+                        <CheckIcon size={28} />
+                        <Text>Enable app embed</Text>
+                        <Text>
+                          Publish shipping protection, and set any price and design that fits your brand.
+                          View help docs
+                        </Text>
+                        <Button>Publish widget</Button>
+                      </InlineStack>
+                    </BlockStack>
+                  </div>
 
-                    </InlineStack>
-                  </BlockStack>
-                </div>
+                  <div className={styles.outer_setup}>
+                    <BlockStack gap="400">
+                      <InlineStack gap="400">
+                        <CheckIcon size={28} />
+                        <Text>Enable app embed</Text>
+                        <List type="bullet">
+                          <List.Item>You retain your protection fees. We are not an insurer.</List.Item>
+                          <List.Item>With shipping protection widget enabled, your customers can buy protection for their orders.</List.Item>
+                          <List.Item>Increase additional order revenue from today.</List.Item>
+                        </List>
+                      </InlineStack>
+                    </BlockStack>
+                  </div>
+                </InlineGrid>
+  </div>
 
-                <div className={styles.outer_setup}>
-                  <BlockStack gap="400">
-                    <InlineStack gap="400">
-                      <CheckIcon size={28} />
-                      <Text>Enable app embed</Text>
-                      <Text>
-                        Publish shipping protection, and set any price and design that fits your brand.
-                        View help docs
-                      </Text>
-                      <Button>Publish widget</Button>
-                    </InlineStack>
-                  </BlockStack>
-                </div>
-
-                <div className={styles.outer_setup}>
-                  <BlockStack gap="400">
-                    <InlineStack gap="400">
-                      <CheckIcon size={28} />
-                      <Text>Enable app embed</Text>
-                      <List type="bullet">
-                        <List.Item>You retain your protection fees. We are not an insurer.</List.Item>
-                        <List.Item>With shipping protection widget enabled, your customers can buy protection for their orders.</List.Item>
-                        <List.Item>Increase additional order revenue from today.</List.Item>
-                      </List>
-                    </InlineStack>
-                  </BlockStack>
-                </div>
-              </InlineGrid>
-</div>
-
-            </Card>
+              </Card>
+            )}
 
 
             <Card roundedAbove="sm">

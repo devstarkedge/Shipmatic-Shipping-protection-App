@@ -56,6 +56,7 @@ export async function loader({ request }) {
       widgetVerticalPadding: product.widgetVerticalPadding,
       widgetHorizontalPadding: product.widgetHorizontalPadding,
       iconSize: product.iconSize,
+      selectedWidgetOptions: product.selectedWidgetOptions,
       iconCornerRadius: product.iconCornerRadius,
       colorStates: product.colorStates ? JSON.parse(product.colorStates) : {},
       imageUrl: product.imageUrl,
