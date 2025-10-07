@@ -789,11 +789,11 @@ export default function AdditionalPage() {
                       >
                         {[
                           { label: "Label title", state: "Labeltitle" },
-                          { label: "Description", state: "description" },
-                          {
-                            label: "Widget text",
-                            state: "protectedWidgetText",
-                          },
+                          // { label: "Description", state: "description" },
+                          // {
+                          //   label: "Widget text",
+                          //   state: "protectedWidgetText",
+                          // },
                           {
                             label: "Checkout button text",
                             state: "checkoutButtonText",

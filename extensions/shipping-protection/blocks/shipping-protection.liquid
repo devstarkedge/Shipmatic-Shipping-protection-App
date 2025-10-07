@@ -23,11 +23,12 @@
 (function() {
   const widgetId = 'shipping-protection-widget-{{ block.id }}';
   const container = document.getElementById(widgetId);
-  
+  console.log('container', container);
   if (!container) return;
   
   const shopDomain = container.dataset.shop;
-  const cartTotal = parseFloat(container.dataset.cartTotal) || 0;
+  
+
   const appId = container.dataset.appId;
   
   let widgetData = null;
@@ -41,6 +42,12 @@
   
   // Fetch widget data from your Remix app via app proxy
   async function fetchWidgetData() {
+
+const cartRes = await fetch('/cart.js');
+    const cartData = await cartRes.json();
+    cartTotal = cartData.total_price / 100; 
+
+
     try {
       const loadingEl = container.querySelector('.widget-loading');
       
@@ -119,6 +126,10 @@ new MutationObserver(hideCheckout).observe(document.body, { childList: true, sub
 
   // Calculate protection price based on cart total and pricing options
   function calculateProtectionPrice() {
+
+ 
+
+   
     if (!widgetData) return '0.00';
     
     const pricingOptions = widgetData.selectedPricingOptions || [];
@@ -126,6 +137,7 @@ new MutationObserver(hideCheckout).observe(document.body, { childList: true, sub
     
     if (pricingOptions.includes('percentage')) {
       let calculatedPrice = (cartTotal * pricingValue / 100);
+      
       const minCharge = parseFloat(widgetData.minimumCharge) || 0;
       const incrementAmount = parseFloat(widgetData.incrementAmount) || 0;
       
@@ -171,8 +183,7 @@ new MutationObserver(hideCheckout).observe(document.body, { childList: true, sub
     })
     .then(response => response.json())
     .then(data => {
-      
-         window.location.href = '/checkout';
+     
        
     })
     
@@ -190,7 +201,8 @@ new MutationObserver(hideCheckout).observe(document.body, { childList: true, sub
   document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', function(e) {
     if (e.target.matches('button[name="checkout"]')) {
-      e.preventDefault();
+      e.preventDefault(); 
+
       const toggleInput = document.querySelector('.shipping-protection-widget .protection-toggle');
       console.log('please check', toggleInput.checked);
       if(toggleInput.checked ==  true){
@@ -425,18 +437,15 @@ new MutationObserver(hideCheckout).observe(document.body, { childList: true, sub
 
     const widgetHTML = `
       <div class="protection-checkout">
-      <button>
+      <p style="color: ${widgetData.colorStates.Labeltitle}; margin:0px;">${widgetData.title}</p>
+      <button style="color: ${widgetData.colorStates.checkoutButtonText}; background: ${widgetData.colorStates.protectedWidgetBackground}; border: unset; padding: 15px 20px; width: 100%; font-size: 17px;">
       Protected checkout  +
-      <span style="
-                  font-size: 14px; 
-                  font-weight: 600;
-                  color: ${colorStates.titleColor || '#000000'};
-                ">
+      <span style="color: ${widgetData.colorStates.checkoutButtonText};">
                   ₹${protectionPrice}
                 </span>
-      </button
+      </button>
        
-      </div
+      </div>
     `;
 
     container.innerHTML = widgetHTML;
@@ -489,10 +498,12 @@ new MutationObserver(hideCheckout).observe(document.body, { childList: true, sub
 
 
 (function() {
+  
   const container = document.getElementById('shipping-protection-widget-{{ block.id }}');
   if (!container) return;
 
   function moveBeforeCartCTAs() {
+  
   
     const target = document.querySelector('.cart__ctas') || document.querySelector('.cart-notification__links');
 
@@ -507,6 +518,7 @@ new MutationObserver(hideCheckout).observe(document.body, { childList: true, sub
     const interval = setInterval(() => {
       const target = document.querySelector('.cart__ctas') || document.querySelector('.cart-notification__links');
       if (target) {
+        
         moveBeforeCartCTAs();
         clearInterval(interval);
       }
@@ -518,7 +530,8 @@ new MutationObserver(hideCheckout).observe(document.body, { childList: true, sub
 
   // Run again on button click (cart drawer trigger)
   document.addEventListener("click", (e) => {
-    if (e.target.matches('button[type="submit"], .cart__checkout-button')) {      
+    if (e.target.matches('button[type="submit"], .cart__checkout-button')) {   
+      
       setTimeout(moveBeforeCartCTAs, 1200); 
     }
   });
