@@ -35,6 +35,7 @@ model product {
   disabledDescription      String?
   minimumCharge            String?
   incrementAmount          String?
+  fixedAdvanceSettings     Json
   createdAt                DateTime @default(now())
   updatedAt                DateTime  @updatedAt
 }

@@ -3,7 +3,6 @@ import { useLoaderData } from "@remix-run/react";
 import {
   Page,
   Layout,
-  LegacyCard,
   BlockStack,
   Button,
   Card,
@@ -12,10 +11,9 @@ import {
   FormLayout,
   TextField,
   Divider,
-  ColorPicker,
   Modal,
 } from "@shopify/polaris";
-import { PlusCircleIcon } from "@shopify/polaris-icons";
+import { PlusCircleIcon, SettingsIcon, DeleteIcon } from "@shopify/polaris-icons";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import styles from "./_index/styles.module.css";
 import AutocompleteMultiSelect from "../components/AutocompleteMultiSelect";
@@ -77,12 +75,14 @@ export default function AdditionalPage() {
       checkoutButtonText: "#ffffff",
       protectedWidgetBackground: "#ffffff",
     },
+    fixedAdvanceSettings: [{ min: "1", max: "1", price: "1" }],
     addonTitle: "Shipping protection",
     enabledDescription:
       "100% guarantee & protect your order from damage, loss, or theft.",
     disabledDescription:
       "By deselecting shipping protection, we are not liable for lost, damaged, or stolen products.",
     showAdvancedSettings: false,
+    showAdvancedSettingsAdvanced: false,
     minimumCharge: "1",
     incrementAmount: "1.01",
   };
@@ -133,6 +133,10 @@ export default function AdditionalPage() {
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(
     initialState.showAdvancedSettings,
   );
+  const [showAdvancedSettingsAdvanced, setShowAdvancedSettingsPercentage] = useState(
+    initialState.showAdvancedSettingsAdvanced,
+  );
+
   const [minimumCharge, setMinimumCharge] = useState(
     initialState.minimumCharge,
   );
@@ -240,6 +244,9 @@ export default function AdditionalPage() {
       }
       if (product.colorStates) {
         setColorStates(JSON.parse(product.colorStates));
+      }
+      if (product.fixedAdvanceSettings) {
+        setTiers(JSON.parse(product.fixedAdvanceSettings));
       }
       if (product.addonTitle) {
         setAddonTitle(product.addonTitle);
@@ -373,6 +380,11 @@ export default function AdditionalPage() {
   const handleOpenModal = () => setShowAdvancedSettings(true);
   const handleCloseModal = () => setShowAdvancedSettings(false);
 
+  const handleOpenModalAdvanced = () => setShowAdvancedSettingsPercentage(true);
+  const handleCloseModalAdvanced = () => setShowAdvancedSettingsPercentage(false);
+
+
+
   const handleMinimumChargeChange = (value) => {
     setMinimumCharge(value);
     setHasChanges(true);
@@ -384,6 +396,40 @@ export default function AdditionalPage() {
     setHasChanges(true);
     console.log("incrementAmount:", value);
   };
+
+
+
+  const [tiers, setTiers] = useState(initialState.fixedAdvanceSettings);
+
+  const handleAddTier = () => {
+    const updated = [...tiers, { min: "", max: "", price: "" }];
+    setTiers(updated);
+    console.log("Tier added:", updated);
+  };
+
+  const handleChange = (index, field, value) => {
+    const updated = [...tiers];
+    updated[index][field] = value;
+    setTiers(updated);
+    console.log(`Tier ${index} changed:`, updated);
+  };
+
+  const handleDeleteTier = (index) => {
+    const updated = tiers.filter((_, i) => i !== index);
+    setTiers(updated);
+    console.log(`Tier ${index} deleted. Remaining tiers:`, updated);
+  };
+
+
+
+
+
+
+
+
+
+
+
 
   const handleSaveChanges = () => {
     const formData = new FormData();
@@ -408,7 +454,7 @@ export default function AdditionalPage() {
     formData.append("disabledDescription", disabledDescription);
     formData.append("minimumCharge", minimumCharge);
     formData.append("incrementAmount", incrementAmount);
-
+    formData.append("tiers", JSON.stringify(tiers));
     console.log("Submitting form data to create product...");
     console.log("FormData contents:", Array.from(formData.entries()));
 
@@ -419,6 +465,8 @@ export default function AdditionalPage() {
 
     setHasChanges(false);
     setShowAdvancedSettings(false);
+    setShowAdvancedSettingsPercentage(false);
+
 
     console.log("Creating shipping protection product with data:", {
       selectedPricingOptions,
@@ -440,6 +488,7 @@ export default function AdditionalPage() {
       disabledDescription,
       minimumCharge,
       incrementAmount,
+      tiers,
     });
   };
 
@@ -462,6 +511,7 @@ export default function AdditionalPage() {
     setEnabledDescription(initialState.enabledDescription);
     setDisabledDescription(initialState.disabledDescription);
     setShowAdvancedSettings(initialState.showAdvancedSettings);
+    setShowAdvancedSettingsPercentage(initialState.showAdvancedSettingsAdvanced);
     setMinimumCharge(initialState.minimumCharge);
     setIncrementAmount(initialState.incrementAmount);
     setHasChanges(false);
@@ -569,13 +619,25 @@ export default function AdditionalPage() {
                       />
                     </FormLayout.Group>
 
-                    <Button
-                      variant="tertiary"
-                      icon={PlusCircleIcon}
-                      onClick={handleOpenModal}
-                    >
-                      Advanced setting
-                    </Button>
+                    {selectedPricingOptions.includes("percentage") && (
+                      <Button
+                        variant="tertiary"
+                        icon={SettingsIcon}
+                        onClick={handleOpenModal}
+                      >
+                        View advanced setting
+
+                      </Button>
+                    )}
+                    {selectedPricingOptions.includes("fixed") && (
+                      <Button
+                        variant="tertiary"
+                        icon={PlusCircleIcon}
+                        onClick={handleOpenModalAdvanced}
+                      >
+                        Add custom rules
+                      </Button>
+                    )}
                   </FormLayout>
                 </BlockStack>
               </Card>
@@ -616,11 +678,10 @@ export default function AdditionalPage() {
                         return (
                           <div
                             key={index}
-                            className={`${styles.widgetIconsItems} ${
-                              selectedIconIndex === index
+                            className={`${styles.widgetIconsItems} ${selectedIconIndex === index
                                 ? styles.selectedIcon
                                 : ""
-                            } ${isDisabled ? styles.disabledIcon : ""}`}
+                              } ${isDisabled ? styles.disabledIcon : ""}`}
                             onClick={() => {
                               if (!isDisabled) {
                                 handleSelectedIconIndexChange(index);
@@ -862,16 +923,16 @@ export default function AdditionalPage() {
               </Card>
 
               {hasChanges && (
-               
-                  <InlineGrid columns="auto auto" gap="200" alignItems="center">
-                    <Button variant="primary" onClick={handleSaveChanges}>
-                      Save
-                    </Button>
-                    <Button variant="secondary" onClick={handleDiscardChanges}>
-                      Discard
-                    </Button>
-                  </InlineGrid>
-              
+
+                <InlineGrid columns="auto auto" gap="200" alignItems="center">
+                  <Button variant="primary" onClick={handleSaveChanges}>
+                    Save
+                  </Button>
+                  <Button variant="secondary" onClick={handleDiscardChanges}>
+                    Discard
+                  </Button>
+                </InlineGrid>
+
               )}
             </BlockStack>
           </Layout.Section>
@@ -924,6 +985,67 @@ export default function AdditionalPage() {
           </FormLayout>
         </Modal.Section>
       </Modal>
+
+
+      <Modal
+        open={showAdvancedSettingsAdvanced}
+        onClose={handleCloseModalAdvanced}
+        title="Set price by cart value"
+        primaryAction={{
+          content: "Save",
+          onAction: () => handleSaveChanges(tiers),
+        }}
+        secondaryActions={[
+          {
+            content: "Cancel",
+            onAction: handleCloseModalAdvanced,
+          },
+        ]}
+      >
+        <Modal.Section>
+          <FormLayout>
+            {tiers.map((tier, index) => (
+              <InlineGrid columns="3fr 3fr 3fr auto" gap="200" key={index}  alignItems="end" spacing="tight">
+                <div style={{ flex: 1 }}>
+                  <TextField
+                    label="Min cart value"
+                    type="number"
+                    value={tier.min}
+                    onChange={(value) => handleChange(index, "min", value)}
+                    prefix="₹"
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <TextField
+                    label="Max cart value"
+                    type="number"
+                    value={tier.max}
+                    onChange={(value) => handleChange(index, "max", value)}
+                    prefix="₹"
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <TextField
+                    label="Shipping protection price"
+                    type="number"
+                    value={tier.price}
+                    onChange={(value) => handleChange(index, "price", value)}
+                    prefix="₹"
+                  />
+                </div>
+                <Button
+                  icon={DeleteIcon}
+                  tone="critical"
+                  onClick={() => handleDeleteTier(index)}
+                />
+              </InlineGrid >
+            ))}
+
+            <Button onClick={handleAddTier}>Add new tier</Button>
+          </FormLayout>
+        </Modal.Section>
+      </Modal>
+
     </div>
   );
 }

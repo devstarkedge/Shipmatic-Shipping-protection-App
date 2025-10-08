@@ -14,7 +14,7 @@ export default function SalesChart({ orders, start, end }) {
   const salesByDate = orders.reduce((acc, order) => {
     const date = order.createdAt.slice(0, 10); // yyyy-mm-dd
     const spItem = order.lineItems.edges.find(li => li.node.title.toLowerCase().includes("shipping protection"));
-    if (spItem) {
+    if (spItem && spItem.node.variant && spItem.node.variant.price) {
       const amount = parseFloat(spItem.node.variant.price) * spItem.node.quantity;
       acc[date] = (acc[date] || 0) + amount;
     }

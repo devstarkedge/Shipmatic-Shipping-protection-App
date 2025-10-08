@@ -35,6 +35,7 @@ export const action = async ({ request }) => {
       formData.get("widgetHorizontalPadding") || "0",
     ),
     colorStates: JSON.parse(formData.get("colorStates") || "{}"),
+    tiers: JSON.parse(formData.get("tiers") || "{}"),
     addonTitle: formData.get("addonTitle"),
     enabledDescription: formData.get("enabledDescription"),
     disabledDescription: formData.get("disabledDescription"),
@@ -358,6 +359,8 @@ export const action = async ({ request }) => {
         disabledDescription: widgetData.disabledDescription,
         minimumCharge: widgetData.minimumCharge,
         incrementAmount: widgetData.incrementAmount,
+        fixedAdvanceSettings: JSON.stringify(widgetData.tiers),
+
       },
       create: {
         id: product.id,
@@ -391,6 +394,7 @@ export const action = async ({ request }) => {
         disabledDescription: widgetData.disabledDescription,
         minimumCharge: widgetData.minimumCharge,
         incrementAmount: widgetData.incrementAmount,
+        fixedAdvanceSettings: JSON.stringify(widgetData.tiers),
         updatedAt: new Date(),
       },
     });
