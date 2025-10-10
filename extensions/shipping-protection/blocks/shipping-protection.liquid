@@ -18,440 +18,316 @@
 </div>
 
 <script>
-
-
-(function() {
+(async function() {
   const widgetId = 'shipping-protection-widget-{{ block.id }}';
   const container = document.getElementById(widgetId);
-  
   if (!container) return;
-  
-  const shopDomain = container.dataset.shop;
-  const cartTotal = parseFloat(container.dataset.cartTotal) || 0;
-  const appId = container.dataset.appId;
-  
-  let widgetData = null;
-  let isProtectionSelected = false;
-  let protectionVariantId = null;
 
-  // Use the correct app proxy endpoint
+  const shopDomain = container.dataset.shop;
   const apiEndpoint = `/apps/shipment/cartWidget`;
 
-  console.log('apiEndpoint', apiEndpoint)
-  
-  // Fetch widget data from your Remix app via app proxy
+  let widgetData = null;
+  let isProtectionSelected = false;
+
+  // ---------- helpers ----------
+  function parseOptions(opt) {
+    if (!opt) return [];
+    if (Array.isArray(opt)) return opt;
+    try { return JSON.parse(opt); } catch (e) { return String(opt).split(',').map(s => s.trim()); }
+  }
+
+  function findCartTarget() {
+    const selectors = [
+      '.cart__ctas',
+      '.cart-notification__links',
+      '.cart__actions',
+      '.cart-actions',
+      '.cart-footer',
+      '.cart-buttons',
+      '[data-cart-actions]',
+      '#CartDrawer',
+    ];
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el) return el;
+    }
+    return null;
+  }
+
+  function moveBeforeCartCTAs() {
+    const target = findCartTarget();
+    if (!target || !container) return false;
+    if (target === container) return false;
+    // Insert container before target (will move if already in DOM)
+    try {
+      target.parentNode.insertBefore(container, target);
+      console.log('[shipping-protection] moved widget before', target);
+      return true;
+    } catch (err) {
+      console.warn('[shipping-protection] failed to move widget:', err);
+      return false;
+    }
+  }
+
+  // ---------- data fetchers ----------
   async function fetchWidgetData() {
     try {
-      const loadingEl = container.querySelector('.widget-loading');
-      
-      const response = await fetch(`${apiEndpoint}?shop=${encodeURIComponent(shopDomain)}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
+      console.log('[shipping-protection] fetching widget data...');
+      const res = await fetch(`${apiEndpoint}?shop=${encodeURIComponent(shopDomain)}`, {
+        headers: { 'Content-Type': 'application/json' }
       });
-
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-
-      console.log('data_ggggg', data.widget) 
-
-     
-
-
-
-      
+      const data = await res.json();
       if (data.success && data.widget) {
         widgetData = data.widget;
-        protectionVariantId = widgetData.variantId;     
-        
-        renderWidget();
+        protectionVariantId = widgetData.variantId;
+        console.log('[shipping-protection] widget data:', widgetData);
       } else {
-        console.warn('Widget data not available or not published');
-        // Hide widget if no data or not published
-        container.style.display = 'none';
+        console.warn('[shipping-protection] no widget data returned', data);
       }
-    } catch (error) {
-      console.error('Error fetching shipping protection widget:', error);
-      console.error('API endpoint:', apiEndpoint);
-      console.error('Shop domain:', shopDomain);
-      
-      // Show error message in development
-      if (window.location.hostname.includes('myshopify.com')) {
-        container.innerHTML = `
-          <div style="padding: 16px; background: #fee; border: 1px solid #fcc; border-radius: 4px; color: #c33;">
-            <strong>Widget Error:</strong> ${error.message}<br>
-            <small>Endpoint: ${apiEndpoint}</small>
-          </div>
-        `;
-      } else {
-        container.style.display = 'none';
-      }
+    } catch (err) {
+      console.error('[shipping-protection] fetchWidgetData error:', err);
     }
   }
 
-  // Calculate protection price based on cart total and pricing options
-  function calculateProtectionPrice() {
-    if (!widgetData) return '0.00';
-    
-    const pricingOptions = widgetData.selectedPricingOptions || [];
-    const pricingValue = parseFloat(widgetData.pricingValue) || 0;
-    
-    if (pricingOptions.includes('percentage')) {
-      let calculatedPrice = (cartTotal * pricingValue / 100);
-      const minCharge = parseFloat(widgetData.minimumCharge) || 0;
-      const incrementAmount = parseFloat(widgetData.incrementAmount) || 0;
-      
-      // Apply minimum charge
-      if (calculatedPrice < minCharge) {
-        calculatedPrice = minCharge;
-      }
-      
-      // Apply increment logic if specified
-      if (incrementAmount > 0) {
-        calculatedPrice = Math.ceil(calculatedPrice / incrementAmount) * incrementAmount;
-      }
-      
-      return calculatedPrice.toFixed(2);
-    } else if (pricingOptions.includes('fixed')) {
-      return pricingValue.toFixed(2);
+  async function getCartTotal() {
+    try {
+      const res = await fetch('/cart.js');
+      const cart = await res.json();
+      return (cart.total_price || 0) / 100;
+    } catch (err) {
+      console.error('[shipping-protection] getCartTotal error:', err);
+      return 0;
     }
-    
-    return parseFloat(widgetData.price || 0).toFixed(2);
   }
 
-  // Add protection product to cart
-  async function addProtectionToCart() {
-    if (!protectionVariantId) return;
+  // ---------- price calc & backend update ----------
+  async function calculateProtectionPrice() {
+    const total = await getCartTotal();
+    if (!widgetData) {
+      console.warn('[shipping-protection] no widgetData when calculating price');
+      return 0;
+    }
 
-    const numericVariantId = protectionVariantId.split('/').pop();
+    const settings = widgetData.fixedAdvanceSettings || [];
+    const matched = settings.find(({ min, max }) => total >= Number(min) && total <= Number(max));
+    const matchedPrice = matched ? Number(matched.price) : widgetData.pricingValue;
 
-
-
- const variantId = numericVariantId; 
-    const quantity = 1; 
-
-    fetch('/cart/add.js', {
+    // update backend (app proxy) — best-effort; not blocking rendering below
+    try {
+      const variant_id = widgetData.variantId?.split('/').pop();
+      const product_id = widgetData.id;
+      const res = await fetch('/apps/shipment/updatePrice', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-            id: variantId,
-            quantity: quantity
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-      
-         window.location.href = '/checkout';
-       
-    })
-    
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_id, variant_id, matchedPrice })
+      });
+      const text = await res.text();
+      try { const json = JSON.parse(text); console.log('[shipping-protection] backend update:', json); }
+      catch { console.log('[shipping-protection] backend update response (non-json):', text); }
+    } catch (err) {
+      console.error('[shipping-protection] updatePrice fetch failed:', err);
+    }
 
-   
+    return matchedPrice;
   }
 
-
-
-
-
-
-
-
-  document.addEventListener('DOMContentLoaded', () => {
-  document.addEventListener('click', function(e) {
-    if (e.target.matches('button[name="checkout"]')) {
-      e.preventDefault();
-      const toggleInput = document.querySelector('.shipping-protection-widget .protection-toggle');
-      console.log('please check', toggleInput.checked);
-      if(toggleInput.checked ==  true){
-   addProtectionToCart();
-      }else{
-          window.location.href = '/checkout';
-      }
-    
-    }
-  });
-});
-
-  
-
-  // Handle protection toggle
-  function handleProtectionToggle() {
-    isProtectionSelected = !isProtectionSelected;
-    
-    if (isProtectionSelected) {
-  
-    } else {
-    
-    }
-    
-    updateWidgetDisplay();
-  }
-
-  // Update widget display based on selection state
-
-
-  function updateWidgetDisplay() {
-    const widget = container.querySelector('.protection-widget-content');
-    if (!widget) return;
-    
-    const toggleInput = widget.querySelector('.protection-toggle');
-    const description = widget.querySelector('.protection-description');
-    console.log('description', description);
-    const slider = widget.querySelector('.toggle-slider');
-    const toggleButton = widget.querySelector('.toggle-button');
-    
-    if (toggleInput) toggleInput.checked = isProtectionSelected;
-    
-    // Update description
-    if (description) {
-      description.textContent = isProtectionSelected ? widgetData.enabledDescription: widgetData.disabledDescription ;
-      
-      // Update description color
-      const colorStates = widgetData.colorStates || {};
-      description.style.color = isProtectionSelected 
-        ? (colorStates.enableDescColor || '#282828')
-        : (colorStates.disabledDescColor || '#282828');
+  // ---------- rendering ----------
+  async function renderWidget() {
+    if (!widgetData) {
+      console.warn('[shipping-protection] renderWidget called without widgetData');
+      return;
     }
 
-    // Update slider for switch
-    if (slider) {
-      const colorStates = widgetData.colorStates || {};
-      slider.style.backgroundColor = isProtectionSelected 
-        ? (colorStates.optInActionColor || '#cc62c7')
-        : (colorStates.optOutActionColor || '#e7e7e7');
-    }
-
-    // Update toggle button position for switch
-    if (toggleButton) {
-      toggleButton.style.left = isProtectionSelected ? '23px' : '3px';
-    }
-  }
-
-
-
-  // Render the widget
-  function renderWidget() {
-    if (!widgetData) return;
+    // get the price first (ensures correct price displayed on load)
+    const protectionPrice = await calculateProtectionPrice();
 
     const colorStates = widgetData.colorStates || {};
     const showIcon = widgetData.selectedVisiblityOptions?.includes('show');
     const useSwitch = widgetData.selectedButtonOptions?.includes('switch');
-    const protectionPrice = calculateProtectionPrice();
+    const selectedOpts = parseOptions(widgetData.selectedWidgetOptions);
+    const isCheckoutWidget = Array.isArray(selectedOpts) ? selectedOpts.includes('checkout') : String(widgetData.selectedWidgetOptions || '').includes('checkout');
 
-    const widgetHTML = `
-      <div class="protection-widget-content" style="
-        border: ${widgetData.widgetBorderSize ? `${widgetData.widgetBorderSize}px solid ${colorStates.borderColor || '#e7e7e7'}` : 'none'};
-        border-radius: ${widgetData.widgetCornerRadius || 0}px;
-        background-color: ${colorStates.backgroundColor || '#ffffff'};
-        padding: ${widgetData.widgetVerticalPadding || 16}px ${widgetData.widgetHorizontalPadding || 16}px;
-        margin: 16px 0;
-        font-family: inherit;
-      ">
+    if (isCheckoutWidget) {
 
-    
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-          ${showIcon ? `
-            <div style="flex-shrink: 0;">
-              <img 
-                src="${widgetData.imageUrl}" 
-                alt="${widgetData.title}"
-                style="
-                  width: ${widgetData.iconSize || 40}px;
-                  height: ${widgetData.iconSize || 40}px;
-                  border-radius: ${widgetData.iconCornerRadius || 0}px;
-                  object-fit: cover;
-                "
-                loading="lazy"
-                onerror="this.style.display='none'"
-              />
-            </div>
-          ` : ''}
-          
-          <div style="flex: 1;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <h4 style="
-                margin: 0; 
-                color: ${colorStates.titleColor || '#000000'};
-                font-size: 16px;
-                font-weight: 600;
-                line-height: 1.3;
-              ">
-                ${widgetData.addonTitle}
-              </h4>
-              
-              <div style="display: flex; align-items: center; gap: 8px; white-space: nowrap;">
-                <span style="
-                  font-size: 14px; 
-                  font-weight: 600;
-                  color: ${colorStates.titleColor || '#000000'};
-                ">
-                  ₹${protectionPrice}
-                </span>
-                
-                ${useSwitch ? `
-                  <label style="
-                    position: relative; 
-                    display: inline-block; 
-                    width: 44px; 
-                    height: 24px;
-                    cursor: pointer;
-                  ">
-                    <input
-                      type="checkbox"
-                      class="protection-toggle"
-                      style="opacity: 0; width: 0; height: 0;"
-                    />
-                    <span class="toggle-slider" style="
-                      position: absolute;
-                      cursor: pointer;
-                      top: 0;
-                      left: 0;
-                      right: 0;
-                      bottom: 0;
-                      background-color: ${colorStates.optOutActionColor || '#e7e7e7'};
-                      border-radius: 24px;
-                      transition: all 0.3s ease;
-                    ">
-                      <span class="toggle-button" style="
-                        position: absolute;
-                        content: '';
-                        height: 18px;
-                        width: 18px;
-                        left: 3px;
-                        bottom: 3px;
-                        background-color: white;
-                        border-radius: 50%;
-                        transition: all 0.3s ease;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                      "></span>
-                    </span>
-                  </label>
-                ` : `
-                  <input
-                    type="checkbox"
-                    class="protection-toggle"
-                    style="
-                      width: 18px; 
-                      height: 18px;
-                      cursor: pointer;
-                      accent-color: ${colorStates.optInActionColor || '#cc62c7'};
-                    "
-                  />
-                `}
+
+       const hideCheckout = () => {
+  document.querySelectorAll('button[name="checkout"], a[href*="/checkout"]').forEach(btn => {
+    btn.style.setProperty('display', 'none', 'important');
+    btn.style.setProperty('visibility', 'hidden', 'important');
+  });
+};
+hideCheckout();
+
+new MutationObserver(hideCheckout).observe(document.body, { childList: true, subtree: true });
+
+
+      // CHECKOUT style widget (fixed markup; tags correctly closed)
+      const widgetHTML = `
+        <div class="protection-checkout" style="margin:12px 0;">
+        <p style="color:${colorStates.Labeltitle}">${widgetData.addonTitle}</p>
+
+          <button type="button" class="protection-checkout-btn" style="display:inline-flex; align-items:center;gap:8px;padding:15px 12px;justify-content: center;width: 100%;border-radius:6px;border:1px solid ${colorStates.protectedWidgetBackground};background:${colorStates.protectedWidgetBackground};cursor:pointer;">
+            <span style="font-size:14px;font-weight:600;color:${colorStates.checkoutButtonText}">Protected checkout</span>
+            <span class="protection-price" style="font-size:14px;font-weight:600;color:${colorStates.checkoutButtonText}">₹${protectionPrice}</span>
+          </button>
+        </div>
+      `;
+      container.innerHTML = widgetHTML;
+    } else {
+      const widgetHTML = `
+        <div class="protection-widget-content" style="
+          border: ${widgetData.widgetBorderSize ? `${widgetData.widgetBorderSize}px solid ${colorStates.borderColor || '#e7e7e7'}` : 'none'};
+          border-radius: ${widgetData.widgetCornerRadius || 0}px;
+          background-color: ${colorStates.backgroundColor || '#ffffff'};
+          padding: ${widgetData.widgetVerticalPadding || 16}px ${widgetData.widgetHorizontalPadding || 16}px;
+          margin: 16px 0;
+          font-family: inherit;
+        ">
+          <div style="display:flex; align-items:flex-start; gap:12px;">
+            ${showIcon ? `<img src="${widgetData.imageUrl}" alt="${widgetData.title}" style="width:${widgetData.iconSize || 40}px;height:${widgetData.iconSize || 40}px;object-fit:cover;border-radius:${widgetData.iconCornerRadius || 0}px;" loading="lazy" onerror="this.style.display='none'">` : ''}
+            <div style="flex:1;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <h4 style="margin:0;color:${colorStates.titleColor || '#000'}; font-size:16px; font-weight:600;">${widgetData.addonTitle}</h4>
+                <div style="display:flex; align-items:center; gap:8px; white-space:nowrap;">
+                  <span class="protection-price" style="font-size:14px; font-weight:600; color:${colorStates.titleColor || '#000'}">₹${protectionPrice}</span>
+                  ${useSwitch ? `<label style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer;"><input type="checkbox" class="protection-toggle" style="opacity:0;width:0;height:0;"><span class="toggle-slider" style="position:absolute;top:0;left:0;right:0;bottom:0;background-color:${colorStates.optOutActionColor || '#e7e7e7'};border-radius:24px; transition:all 0.3s;"><span class="toggle-button" style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:white;border-radius:50%; transition:all 0.3s; box-shadow:0 2px 4px rgba(0,0,0,0.1);"></span></span></label>` : `<input type="checkbox" class="protection-toggle" style="width:18px; height:18px; cursor:pointer; accent-color:${colorStates.optInActionColor || '#cc62c7'};">`}
+                </div>
               </div>
+              <p class="protection-description" style="margin:0;font-size:14px; line-height:1.4; color:${colorStates.disabledDescColor || '#282828'};">${widgetData.disabledDescription}</p>
             </div>
-            
-            <p class="protection-description" style="
-              margin: 0; 
-              font-size: 14px; 
-              line-height: 1.4;
-              color: ${colorStates.disabledDescColor || '#282828'};
-            ">
-              ${widgetData.disabledDescription}
-            </p>
           </div>
         </div>
-      </div>
-    `;
-
-    container.innerHTML = widgetHTML;
-
-    // Add event listener
-    const toggleInput = container.querySelector('.protection-toggle');
-    if (toggleInput) {
-      toggleInput.addEventListener('change', handleProtectionToggle);
+      `;
+      container.innerHTML = widgetHTML;
     }
 
-    // Check if protection is already in cart
-    checkExistingProtection();
+    // attach toggle handler if present
+    const toggle = container.querySelector('.protection-toggle');
+    if (toggle) toggle.addEventListener('change', handleProtectionToggle);
   }
 
-  // Check if protection is already in cart and update UI
-  async function checkExistingProtection() {
-    try {
-      const cartResponse = await fetch('/cart.js');
-      const cart = await cartResponse.json();
-      
-      const hasProtection = cart.items.some(item => 
-        (item.properties && item.properties._shipping_protection === 'true') ||
-        (protectionVariantId && item.variant_id.toString() === protectionVariantId.toString())
-      );
+  function handleProtectionToggle() {
+    isProtectionSelected = !isProtectionSelected;
+    const description = container.querySelector('.protection-description');
+    const slider = container.querySelector('.toggle-slider');
+    const toggleButton = container.querySelector('.toggle-button');
+    const colorStates = widgetData.colorStates || {};
 
-      if (hasProtection) {
-        isProtectionSelected = true;
-        updateWidgetDisplay();
-      }
-    } catch (error) {
-      console.error('Error checking existing protection:', error);
+    if (description) description.textContent = isProtectionSelected ? widgetData.enabledDescription : widgetData.disabledDescription;
+    if (description) description.style.color = isProtectionSelected ? (colorStates.enableDescColor || '#282828') : (colorStates.disabledDescColor || '#282828');
+    if (slider) slider.style.backgroundColor = isProtectionSelected ? (colorStates.optInActionColor || '#cc62c7') : (colorStates.optOutActionColor || '#e7e7e7');
+    if (toggleButton) toggleButton.style.left = isProtectionSelected ? '23px' : '3px';
+  }
+
+  // ---------- place widget near cart CTAs ----------
+  // Try to move widget now. If target not present yet, observe DOM and also poll.
+  const observer = new MutationObserver(() => {
+    if (moveBeforeCartCTAs()) {
+      observer.disconnect();
+      if (pollInterval) clearInterval(pollInterval);
     }
-  }
+  });
 
-  // Initialize widget
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', fetchWidgetData);
-  } else {
-    fetchWidgetData();
-  }
+  observer.observe(document.body, { childList: true, subtree: true });
 
-  // Listen for cart updates to refresh widget state
-  document.addEventListener('cart:updated', checkExistingProtection);
-  
-})();
-
-
-
-
-(function() {
-  const container = document.getElementById('shipping-protection-widget-{{ block.id }}');
-  if (!container) return;
-
-  function moveBeforeCartCTAs() {
-  
-    const target = document.querySelector('.cart__ctas') || document.querySelector('.cart-notification__links');
-
-    if (target && container) {
-      target.insertAdjacentElement('beforebegin', container);
-      console.log("Widget moved before:", target.className);
+  let pollInterval = setInterval(() => {
+    if (moveBeforeCartCTAs()) {
+      clearInterval(pollInterval);
+      observer.disconnect();
     }
-  }
+  }, 250);
 
- 
-  document.addEventListener('DOMContentLoaded', () => {
-    const interval = setInterval(() => {
-      const target = document.querySelector('.cart__ctas') || document.querySelector('.cart-notification__links');
-      if (target) {
+  // ---------- checkout click (recalc + re-render) ----------
+  document.addEventListener('click', async (e) => {
+    if (e.target.matches('button[type="submit"], .cart__checkout-button, .protection-checkout-btn')) {
+      console.log('[shipping-protection] checkout clicked — recalculating & rendering');
+      // short delay to allow cart to settle/Shopify to update DOM
+      setTimeout(async () => {
+        // recalc and re-render (renderWidget will call calculateProtectionPrice internally)
+        await renderWidget();
+        // try moving again in case cart layout changed
         moveBeforeCartCTAs();
-        clearInterval(interval);
-      }
-    }, 100);
-  });
-
-  // Run again whenever cart updates
-  document.addEventListener("cart:updated", moveBeforeCartCTAs);
-
-  // Run again on button click (cart drawer trigger)
-  document.addEventListener("click", (e) => {
-    if (e.target.matches('button[type="submit"], .cart__checkout-button')) {      
-      setTimeout(moveBeforeCartCTAs, 1200); 
+      }, 500);
     }
   });
 
+  // ---------- init ----------
+  await fetchWidgetData();
+  await renderWidget();
+  // attempt placement once more after render
+  moveBeforeCartCTAs();
+
+
+
+
+
+  // Add protection product to cart
+  async function addProtectionToCart() {
+  if (!protectionVariantId) {
+    console.warn('[shipping-protection] No protectionVariantId available');
+    return;
+  }
+
+  const numericVariantId = protectionVariantId.split('/').pop();
+
+  try {
+    const res = await fetch('/cart/add.js', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ id: numericVariantId, quantity: 1 })
+    });
+    const data = await res.json();
+    console.log('[shipping-protection] added protection to cart', data);
+    window.location.href = '/checkout';
+  } catch (err) {
+    console.error('[shipping-protection] addProtectionToCart failed:', err);
+    window.location.href = '/checkout';
+  }
+}
+
+
+
+
+
+
+
+
+
+document.addEventListener('click', async (e) => {
+  if (e.target.matches('button[name="checkout"]')) {
+    e.preventDefault();
+    const toggleInput = document.querySelector('.shipping-protection-widget .protection-toggle');
+    console.log('please check', toggleInput?.checked);
+
+    if (toggleInput && toggleInput.checked === true) {
+      await addProtectionToCart();
+    } else {
+      window.location.href = '/checkout';
+    }
+  }
+});
+
+
+
+
+document.addEventListener('click', async (e) => {
+  if (e.target.matches('.protection-checkout button')) {
+    e.preventDefault();   
+      await addProtectionToCart();
+    
+  }
+});
+
+
+
+
+
+
+
+
+
+
 })();
-
-
-
-
-
-
 
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -484,17 +360,7 @@ setTimeout(async () => {
 
 
 
-
-
-
-
-
-
-
-
 </script>
-
-
 
 {% schema %}
 {

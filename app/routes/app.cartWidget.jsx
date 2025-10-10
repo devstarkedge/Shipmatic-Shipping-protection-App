@@ -33,12 +33,25 @@ export async function loader({ request }) {
       );
     }
 
+    const getVariantId = (gid) => {
+  if (!gid) return null;
+  const parts = gid.split("/");
+  return parts[parts.length - 1]; 
+};
+
+
+    const getProductId = (gid) => {
+  if (!gid) return null;
+  const parts = gid.split("/");
+  return parts[parts.length - 1]; 
+};
+
     const widget = {
-      id: product.id,
+      id: getProductId(product.id),
       title: product.title,
       description: product.description,
       disabledDescription: product.disabledDescription,
-      variantId: product.variantId,
+      variantId: getVariantId(product.variantId),
       pricingValue: product.pricingValue,
       selectedPricingOptions: product.selectedPricingOptions
         ? JSON.parse(product.selectedPricingOptions)
@@ -63,8 +76,11 @@ export async function loader({ request }) {
       isWidgetPublished: product.isWidgetPublished,
       addonTitle: product.addonTitle,
       enabledDescription: product.enabledDescription,
+      fixedAdvanceSettings: product.fixedAdvanceSettings
+        ? JSON.parse(product.fixedAdvanceSettings)
+        : [],
       createdAt: product.createdAt,
-      updatedAt: product.updatedAt,
+      updatedAt: product.updatedAt, 
     };
 
     return json({ success: true, widget }, { headers });
