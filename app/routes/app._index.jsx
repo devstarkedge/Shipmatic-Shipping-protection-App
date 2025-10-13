@@ -112,6 +112,25 @@ export default function Index() {
   const toggleActive = () => setActive((prev) => !prev);
 
 
+ const handleEnableEmbed = () => {
+    // Get shop domain from the URL parameters
+    const host = new URLSearchParams(window.location.search).get("host");
+    if (!host) {
+      alert("Shop host missing. Cannot open Theme Editor.");
+      return;
+    }
+
+    // Shopify encodes the host as base64(shop-domain/admin)
+    const decodedHost = atob(host); // e.g. "sesquare-themes.myshopify.com/admin"
+    const shopDomain = decodedHost.split("/")[0]; // "sesquare-themes.myshopify.com"
+
+    // Construct full admin theme editor URL
+    const themeEditorUrl = `https://${shopDomain}/admin/themes/current/editor?context=apps`;
+
+    // Open in a new tab
+    window.open(themeEditorUrl, "_blank");
+  };
+
 
   const CheckIcon = ({ size = 28 }) => {
     return (
@@ -299,7 +318,7 @@ export default function Index() {
                           Please follow the 👉 help docs to enable app embed and complete setup.
                           This step won't affect your live store. Widget will not appear on your storefront until you've published it from our app.
                         </Text>
-                        <Button>Enable app embed</Button>
+                        <Button onClick={handleEnableEmbed}>Enable app embed</Button>
                         <img src="https://cdn.shopify.com/s/files/1/0605/9891/1037/files/Vector.png" />
 
 
