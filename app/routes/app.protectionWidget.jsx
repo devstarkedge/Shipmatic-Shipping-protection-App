@@ -148,7 +148,7 @@ export default function AdditionalPage() {
 
   const pricingOptions = useMemo(
     () => [
-      { value: "percentage", label: "Percentage" },
+      // { value: "percentage", label: "Percentage" },
       { value: "fixed", label: "Fixed" },
     ],
     [],
