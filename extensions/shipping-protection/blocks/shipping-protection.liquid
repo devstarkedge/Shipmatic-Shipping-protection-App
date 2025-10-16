@@ -129,7 +129,7 @@
           <p style="margin: 0;color:${colorStates.Labeltitle || '#000'}">${widgetData.addonTitle}</p>
           <button type="button" class="protection-checkout-btn" style="display:inline-flex; align-items:center;gap:8px;padding:15px 12px;justify-content: center;width: 100%;border-radius:6px;border:1px solid #000;};background:${colorStates.protectedWidgetBackground || '#fff'};cursor:pointer;">
             <span style="font-size:14px;font-weight:600;color:${colorStates.checkoutButtonText || '#000'}">Protected checkout</span>
-            <span class="protection-price" style="font-size:14px;font-weight:600;color:${colorStates.checkoutButtonText || '#000'}">${protectionPrice}</span>
+            <span class="protection-price" style="font-size:14px;font-weight:600;color:${colorStates.checkoutButtonText || '#000'}">{{ cart.currency.symbol }}${protectionPrice}</span>
           </button>
         </div>
       `;
@@ -149,7 +149,7 @@
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <h4 style="margin:0;color:${colorStates.titleColor || '#000'}; font-size:16px; font-weight:600;">${widgetData.addonTitle}</h4>
                 <div style="display:flex; align-items:center; gap:8px; white-space:nowrap;">
-                  <span class="protection-price" style="font-size:14px; font-weight:600; color:${colorStates.titleColor || '#000'}">${protectionPrice}</span>
+                  <span class="protection-price" style="font-size:14px; font-weight:600; color:${colorStates.titleColor || '#000'}">{{ cart.currency.symbol }}${protectionPrice}</span>
                  
                  ${useSwitch ? `
   <label style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer;">
