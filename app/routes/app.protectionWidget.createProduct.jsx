@@ -8,40 +8,42 @@ export const action = async ({ request }) => {
   await authenticate.admin(request);
 
   const formData = await request.formData();
-  const widgetData = {
-    selectedPricingOptions: JSON.parse(
-      formData.get("selectedPricingOptions") || "[]",
-    ),
-    isWidgetPublished: formData.get("isWidgetPublished") === "true",
-    selectedWidgetOptions: JSON.parse(
-      formData.get("selectedWidgetOptions") || "[]",
-    ),
-    selectedVisiblityOptions: JSON.parse(
-      formData.get("selectedVisiblityOptions") || "[]",
-    ),
-    selectedButtonOptions: JSON.parse(
-      formData.get("selectedButtonOptions") || "[]",
-    ),
-    pricingValue: formData.get("pricingValue"),
-    selectedIconIndex: parseInt(formData.get("selectedIconIndex") || "0"),
-    iconSize: parseInt(formData.get("iconSize") || "40"),
-    iconCornerRadius: parseInt(formData.get("iconCornerRadius") || "0"),
-    widgetBorderSize: parseInt(formData.get("widgetBorderSize") || "0"),
-    widgetCornerRadius: parseInt(formData.get("widgetCornerRadius") || "0"),
-    widgetVerticalPadding: parseInt(
-      formData.get("widgetVerticalPadding") || "0",
-    ),
-    widgetHorizontalPadding: parseInt(
-      formData.get("widgetHorizontalPadding") || "0",
-    ),
-    colorStates: JSON.parse(formData.get("colorStates") || "{}"),
-    tiers: JSON.parse(formData.get("tiers") || "{}"),
-    addonTitle: formData.get("addonTitle"),
-    enabledDescription: formData.get("enabledDescription"),
-    disabledDescription: formData.get("disabledDescription"),
-    minimumCharge: formData.get("minimumCharge"),
-    incrementAmount: formData.get("incrementAmount"),
-  };
+ const widgetData = {
+  selectedPricingOptions: JSON.parse(
+    formData.get("selectedPricingOptions") || "[]",
+  ),
+  isWidgetPublished: formData.get("isWidgetPublished") === "true",
+  isWidgetPublishedwidget: formData.get("isWidgetPublishedwidget") === "true",
+  selectedWidgetOptions: JSON.parse(
+    formData.get("selectedWidgetOptions") || "[]", // <- Correct field
+  ),
+  selectedVisiblityOptions: JSON.parse(
+    formData.get("selectedVisiblityOptions") || "[]",
+  ),
+  selectedButtonOptions: JSON.parse(
+    formData.get("selectedButtonOptions") || "[]",
+  ),
+  pricingValue: formData.get("pricingValue"),
+  selectedIconIndex: parseInt(formData.get("selectedIconIndex") || "0"),
+  iconSize: parseInt(formData.get("iconSize") || "40"),
+  iconCornerRadius: parseInt(formData.get("iconCornerRadius") || "0"),
+  widgetBorderSize: parseInt(formData.get("widgetBorderSize") || "0"),
+  widgetCornerRadius: parseInt(formData.get("widgetCornerRadius") || "0"),
+  widgetVerticalPadding: parseInt(
+    formData.get("widgetVerticalPadding") || "0",
+  ),
+  widgetHorizontalPadding: parseInt(
+    formData.get("widgetHorizontalPadding") || "0",
+  ),
+  colorStates: JSON.parse(formData.get("colorStates") || "{}"),
+  tiers: JSON.parse(formData.get("tiers") || "[]"), // <- Should be array not {}
+  addonTitle: formData.get("addonTitle"),
+  enabledDescription: formData.get("enabledDescription"),
+  disabledDescription: formData.get("disabledDescription"),
+  minimumCharge: formData.get("minimumCharge"),
+  incrementAmount: formData.get("incrementAmount"),
+};
+
 
   console.log("Received widget data:", widgetData);
 
@@ -340,6 +342,7 @@ export const action = async ({ request }) => {
           widgetData.selectedPricingOptions,
         ),
         isWidgetPublished: widgetData.isWidgetPublished,
+           isWidgetPublishedwidget: widgetData.isWidgetPublishedwidget,
         selectedWidgetOptions: JSON.stringify(widgetData.selectedWidgetOptions),
         selectedVisiblityOptions: JSON.stringify(
           widgetData.selectedVisiblityOptions,
@@ -375,6 +378,7 @@ export const action = async ({ request }) => {
           widgetData.selectedPricingOptions,
         ),
         isWidgetPublished: widgetData.isWidgetPublished,
+          isWidgetPublishedwidget: widgetData.isWidgetPublishedwidget,
         selectedWidgetOptions: JSON.stringify(widgetData.selectedWidgetOptions),
         selectedVisiblityOptions: JSON.stringify(
           widgetData.selectedVisiblityOptions,

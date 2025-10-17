@@ -50,6 +50,7 @@ export default function AdditionalPage() {
   const initialState = {
     selectedPricingOptions: ["percentage"],
     isWidgetPublished: false,
+    isWidgetPublishedwidget: false,
     selectedWidgetOptions: ["standard"],
     selectedVisiblityOptions: ["show"],
     selectedButtonOptions: ["show"],
@@ -92,6 +93,9 @@ export default function AdditionalPage() {
   );
   const [isWidgetPublished, setIsWidgetPublished] = useState(
     initialState.isWidgetPublished,
+  );
+  const [isWidgetPublishedwidget, setIsWidgetPublishedwidget] = useState(
+    initialState.isWidgetPublishedwidget,
   );
   const [selectedWidgetOptions, setSelectedWidgetOptions] = useState(
     initialState.selectedWidgetOptions,
@@ -208,6 +212,11 @@ export default function AdditionalPage() {
       if (product.isWidgetPublished !== undefined) {
         setIsWidgetPublished(product.isWidgetPublished);
       }
+       if (product.isWidgetPublishedwidget !== undefined) {
+        setIsWidgetPublishedwidget(product.isWidgetPublishedwidget);
+      }
+      
+ 
       if (product.selectedWidgetOptions) {
         setSelectedWidgetOptions(JSON.parse(product.selectedWidgetOptions));
       }
@@ -283,6 +292,17 @@ export default function AdditionalPage() {
       return newValue;
     });
   };
+
+
+const handleToggleChangewidget = () => {
+    setIsWidgetPublishedwidget((prev) => {
+      const newValue = !prev;
+      setHasChanges(true);
+      console.log("isWidgetPublishedwidget:", newValue);
+      return newValue;
+    });
+  };
+
 
   const handleSelectedWidgetOptionsChange = (value) => {
     setSelectedWidgetOptions(value);
@@ -433,10 +453,10 @@ export default function AdditionalPage() {
 
   const handleSaveChanges = () => {
     const formData = new FormData();
-
     // Serialize the data as form data
     formData.append("selectedPricingOptions", JSON.stringify(selectedPricingOptions));
     formData.append("isWidgetPublished", isWidgetPublished.toString());
+    formData.append("isWidgetPublishedwidget", isWidgetPublishedwidget.toString());
     formData.append("selectedWidgetOptions", JSON.stringify(selectedWidgetOptions));
     formData.append("selectedVisiblityOptions", JSON.stringify(selectedVisiblityOptions));
     formData.append("selectedButtonOptions", JSON.stringify(selectedButtonOptions));
@@ -471,6 +491,7 @@ export default function AdditionalPage() {
     console.log("Creating shipping protection product with data:", {
       selectedPricingOptions,
       isWidgetPublished,
+      isWidgetPublishedwidget,
       selectedWidgetOptions,
       selectedVisiblityOptions,
       selectedButtonOptions,
@@ -495,6 +516,7 @@ export default function AdditionalPage() {
   const handleDiscardChanges = () => {
     setSelectedPricingOptions(initialState.selectedPricingOptions);
     setIsWidgetPublished(initialState.isWidgetPublished);
+    setIsWidgetPublishedwidget(initialState.isWidgetPublishedwidget);
     setSelectedWidgetOptions(initialState.selectedWidgetOptions);
     setSelectedVisiblityOptions(initialState.selectedVisiblityOptions);
     setSelectedButtonOptions(initialState.selectedButtonOptions);
@@ -644,17 +666,44 @@ export default function AdditionalPage() {
 
               <Card roundedAbove="sm">
                 <BlockStack gap="200">
-                  <Text as="h2" variant="headingMd" fontWeight="bold">
+                   <InlineGrid columns="2" gap="300">
+                       <InlineGrid columns="1fr auto">
+
+                       
+
+                  <InlineGrid columns="1" gap="300">
+                     <Text as="h2" variant="headingMd" fontWeight="bold">
                     Publish cart page widget
                   </Text>
-
-                  <InlineGrid columns="2" gap="300">
                     <AutocompleteMultiSelect
                       options={widgetOptions}
                       selectedOptions={selectedWidgetOptions}
                       onSelect={handleSelectedWidgetOptionsChange}
                     />
                   </InlineGrid>
+                       </InlineGrid>
+                       <InlineGrid columns="1fr auto">
+
+ <Text as="h2" variant="headingMd" fontWeight="bold">
+                    Widget Default settings:
+                  </Text>
+
+
+
+                  <label className={styles.switch}>
+                      <input
+                        type="checkbox"
+                        checked={isWidgetPublishedwidget}
+                        onChange={handleToggleChangewidget}
+                        aria-label="Publish cart page widget switch"
+                      />
+                      <span className={styles.slider}></span>
+                    </label>
+
+                       </InlineGrid>
+                   </InlineGrid>
+                  
+                  
                 </BlockStack>
               </Card>
 

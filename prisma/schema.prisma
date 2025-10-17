@@ -18,6 +18,7 @@ model product {
   published                Boolean
   selectedPricingOptions   String?
   isWidgetPublished        Boolean?
+  isWidgetPublishedwidget  Boolean?
   selectedWidgetOptions    String?
   selectedVisiblityOptions String?
   selectedButtonOptions    String?

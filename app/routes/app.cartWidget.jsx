@@ -74,6 +74,7 @@ export async function loader({ request }) {
       colorStates: product.colorStates ? JSON.parse(product.colorStates) : {},
       imageUrl: product.imageUrl,
       isWidgetPublished: product.isWidgetPublished,
+       isWidgetPublishedwidget: product.isWidgetPublishedwidget,
       addonTitle: product.addonTitle,
       enabledDescription: product.enabledDescription,
       fixedAdvanceSettings: product.fixedAdvanceSettings
