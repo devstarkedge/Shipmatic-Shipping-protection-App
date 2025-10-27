@@ -28,6 +28,8 @@
 
   let widgetData = null;
   let isProtectionSelected = true;
+   let variant_id = null; 
+  let product_id = null;
 
   async function fetchWidgetData() {
     try {
@@ -67,7 +69,7 @@
 
     // update backend
     try {
-      const variant_id = widgetData.variantId?.split('/').pop();
+       variant_id = widgetData.variantId?.split('/').pop();
       const product_id = widgetData.id;
       await fetch('/apps/shipment/updatePrice', {
         method: 'POST',
@@ -167,7 +169,7 @@
                   </label>
                 </div>
               </div>
-              <p class="protection-description" style="margin:0;font-size:14px; line-height:1.4; color:${isWidgetPublished ? (colorStates.enabledDescColor || '#282828') : (colorStates.disabledDescColor || '#999999')}">
+              <p class="protection-description" style="margin:0;font-size:14px; line-height:1.4; color:${isWidgetPublished ? (colorStates.enableDescColor || '#282828') : (colorStates.disabledDescColor || '#999999')}">
                 ${isWidgetPublished ? widgetData.enabledDescription : widgetData.disabledDescription}
               </p>
             </div>
@@ -210,6 +212,66 @@
     await renderWidget();
     await insertBeforeCartCTAs();
   });
+
+
+    // ---------- add protection ----------
+  async function addProtectionToCart() {
+    if (!variant_id) return;
+   
+    try {
+      await fetch('/cart/add.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ id: variant_id, quantity: 1 })
+      });
+      window.location.href = '/checkout';
+    } catch (err) {
+      console.error('[shipping-protection] addProtectionToCart failed:', err);
+      window.location.href = '/checkout';
+    }
+  }
+
+
+ document.addEventListener('click', async (e) => {
+    if (e.target.matches('button[name="checkout"]')) {
+      e.preventDefault();
+      const toggleInput = document.querySelector('.shipping-protection-widget .protection-toggle');
+      if (toggleInput && toggleInput.checked) {
+        await addProtectionToCart();
+      } else {
+        window.location.href = '/checkout';
+      }
+    }
+
+    if (e.target.closest('.protection-checkout-btn')) {
+      e.preventDefault();
+      await addProtectionToCart();
+    }
+  });
+
+
+
+ document.addEventListener("DOMContentLoaded", async () => {
+    setTimeout(async () => {
+      try {
+        const cart = await fetch('/cart.js').then(res => res.json());
+        const itemToRemove = cart.items.find(item => item.product_title === 'Shipping Protections');
+        if (itemToRemove) {
+          await fetch('/cart/change.js', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: itemToRemove.key, quantity: 0 })
+          });
+          console.log('Shipping Protections item removed from cart');
+          window.location.reload();
+        }
+      } catch (err) {
+        console.error('Error removing Shipping Protections:', err);
+      }
+    }, 500);
+  })
+
+
 })();
 </script>
 

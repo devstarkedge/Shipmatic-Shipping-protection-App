@@ -177,7 +177,7 @@ export default function AdditionalPage() {
   const ButtonOptions = useMemo(
     () => [
       { value: "switch", label: "Switch" },
-      { value: "checkbox", label: "Checkbox" },
+      // { value: "checkbox", label: "Checkbox" },
     ],
     [],
   );
